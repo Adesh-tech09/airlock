@@ -1,6 +1,6 @@
 # ROADMAP: Airlock
 
-Last updated: 2026-11-18 17:42 UTC
+Last updated: 2026-11-19 07:53 UTC
 
 Roadmap version: 1
 
@@ -326,6 +326,7 @@ Newest first. One row per merged change.
 
 | Date (UTC) | Change | Tasks |
 |---|---|---|
+| 2026-11-19 07:53 | Clarify `ARCHITECTURE.md` 6.1 so the size-consistency check names both the head-only read path and the full-read path explicitly. Documentation only: no code or test changed, and 9.12 remains `[~]`. | 9.12 |
 | 2026-11-18 17:42 | A file that changed size during the read was a skip only when it grew. The collector read `size_bytes + 1` bytes and rejected the buffer on `len(data) > size_bytes` inside the second-read branch, so a shrinking file left a short prefix, passed the guard and was hashed and decoded as the whole file: rules saw a prefix and the report called the file scanned. The comparison is now `len(data) != size_bytes` and sits outside that branch, so it judges the head-only path as well. Either direction returns `skipped-unreadable` at HIGH with `sha256=None` and no text, and the reason string, severity and skip accounting are unchanged. Tests: six regressions in `tests/unit/test_collector.py` resize the file inside a counted `Path.open`, so each case lands at an exact point in the read with no sleep or thread. `TestSizeChanges` covers a shrink during the full read, a shrink before the first read (a real 100-byte file, the genuine `getsize` result, truncated to 10 bytes at the first open), a growth before the first read on a 40-byte file, and a growth during the full read. The small-file growth is the case the old guard could not see: after the append the head read returns the whole file, so `size_bytes > len(head)` is false, the second-read branch is never entered and the old comparison never runs. `TestUnchangedReads` covers an unchanged 40-byte file hashed whole and an inert hook at a call that never happens. Three of the four size-change tests fail against the old guard; the fourth is the growth during the full read, which the old comparison did reject. Not verified here: `tests/unit/test_collector.py` does not collect on Windows because line 328 calls `os.geteuid`, so these six tests and the module they live in need CI. | 9.12 |
 | 2026-11-09 14:36 | Finalize Wave 11 readiness packet: decide D-05 (Accepted), update application packet in docs/wave/application.md with Wave 11 window (Nov 18–25), 709 passed tests, and live docs site link. Verified 15 scoped issues staged in docs/wave/issues/ and 23 labels on GitHub. | 8.4, D-05 |
 | 2026-11-09 14:06 | Implemented dynamic README metrics synchronization (`scripts/sync_readme.py`) generating live Shields.io endpoint JSON files under `site/data/` for tests (709 passing) and rules (22 verified), and enforced with `--check` in the `roadmap-check` workflow. | none ticked |
