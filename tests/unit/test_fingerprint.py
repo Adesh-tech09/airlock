@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 from dataclasses import replace
 
-import pytest
 from tests.fixtures import assemble
 
 from airlock.fingerprint import (
@@ -108,11 +107,24 @@ class TestEvidenceKey:
         other = replace(base, message="wasm-manifest.toml was added by this change")
         assert base.evidence_key() != other.evidence_key()
 
-    def test_nothing_to_key_on_is_an_error(self) -> None:
-        item = pending(evidence=None, file_sha256=None)
-        empty = replace(item, message="   ")
-        with pytest.raises(ValueError, match="no evidence, no file sha256 and no message"):
-            empty.evidence_key()
+    def test_a_state_finding_with_no_message_keys_on_rule_path_and_line(self) -> None:
+        # A blank or whitespace-only message used to raise, and the CLI maps that ValueError to
+        # exit 2, so one such finding aborted the scan and took every other finding with it.
+        empty = replace(pending(evidence=None, file_sha256=None), message="   ")
+        assert empty.evidence_key() == "state:cfg-dynamic-code:postcss.config.mjs:7"
+
+    def test_the_fallback_is_stable_and_two_lines_do_not_collapse(self) -> None:
+        first = replace(pending(evidence=None, file_sha256=None), message="")
+        whitespace = replace(pending(evidence=None, file_sha256=None), message=" \t ")
+        other_line = replace(pending(line=41, evidence=None, file_sha256=None), message="")
+        assert first.evidence_key() == whitespace.evidence_key()
+        assert first.evidence_key() != other_line.evidence_key()
+
+    def test_a_blank_message_finding_is_numbered_instead_of_aborting(self) -> None:
+        empty = replace(pending(evidence=None, file_sha256=None), message="")
+        findings = number_occurrences([empty])
+        assert [finding.occurrence for finding in findings] == [0]
+        assert findings[0].fingerprint.startswith(FINGERPRINT_PREFIX)
 
 
 class TestOccurrences:
