@@ -1,0 +1,31 @@
+# Cargo manifests can replace registry dependencies without changing source files.
+
+[[rule]]
+id = "cargo-patch-override"
+title = "Cargo patch overrides a registry dependency"
+roles = ["source"]
+detector = "builtin:cargo_vectors"
+severity = "high"
+suppressible = true
+rationale = "A [patch.*] entry overrides the registry package selected by the lockfile. The replacement is reviewable but must be made explicit; a maintainer can accept a reviewed patch with a reasoned suppression."
+tests = { positive = "cargo_vectors_patch", negative = "cargo_vectors_patch" }
+
+[[rule]]
+id = "cargo-git-dependency"
+title = "Cargo dependency uses a Git source"
+roles = ["source"]
+detector = "builtin:cargo_vectors"
+severity = "high"
+suppressible = true
+rationale = "A Git dependency supplies code outside the registry release path, even when it is pinned. The finding names the manifest table, dependency key and source so a reviewer can verify the replacement."
+tests = { positive = "cargo_vectors_patch", negative = "cargo_vectors_patch" }
+
+[[rule]]
+id = "cargo-path-escape"
+title = "Cargo dependency path escapes the repository"
+roles = ["source"]
+detector = "builtin:cargo_vectors"
+severity = "high"
+suppressible = true
+rationale = "A path dependency resolving outside the repository is not covered by the tracked source tree and can vary with the build environment. In-repository path dependencies remain clean."
+tests = { positive = "cargo_vectors_patch", negative = "cargo_vectors_patch" }

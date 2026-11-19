@@ -147,9 +147,9 @@ Priority: **P0** ships in v0.1.0, **P1** in v0.2.0, **Later** is backlog (`ROADM
 | FR-15 | Roadmap gate: `scripts/check_roadmap_touched.sh`, PR template checkbox and a required CI check | P0 | A PR that changes any file but not `ROADMAP.md` fails |
 | FR-16 | `soroban_profile`, contextual to contract crates | P1 | No false positive on a test-support library crate |
 | FR-17 | `stellar_seed`: offline, checksum-valid plaintext Stellar seeds in tracked files (D-06: KEEP, owner-approved 2026-10-28 UTC) | P1 | Canonical 56-character seeds detected within collector and line limits; invalid checksum, version or length rejected. Valid test vectors also detected unless explicitly suppressed with a reason. No funding or live-use inference. Implementation remains tasks 6.2 and 6.3. |
-| FR-18 | `cargo_vectors` | P1 | Fixtures pass |
+| FR-18 | `cargo_vectors` | P1 | Every tracked Cargo manifest is parsed as TOML; `[patch.*]`, Git dependencies across the standard and workspace dependency tables, and dependency paths escaping the repository are reported with table, key and source context. Malformed TOML is a detector error. |
 | FR-19 | SARIF 2.1.0 output (deferred to task 7.6) | P1 | Validates against the schema; result count capped; uses `partialFingerprints["airlock/v1"]` (D-09, ADR-019), settled before shipping with no migration needed |
-| FR-20 | Git LFS pointer and submodule handling | P1 | LFS-stored Wasm is checked against the manifest or reported |
+| FR-20 | Git LFS pointer and submodule handling | P1 | A valid LFS pointer at a `.wasm` path marked `filter=lfs` is compared by oid to the trusted manifest without fetching; unknown oids remain HIGH and malformed or unmarked pointers remain unlisted |
 | FR-21 | Extended config globs and vector roles (`vite`, `webpack`, `jest`, `.husky/*`, `devcontainer.json`, composite action files) | P1 | False-positive review on the six repos |
 | FR-22 | Watch mode: scheduled scan from a separate trusted repository, with an ancestry check against the last seen SHA | Later (decision D-04) | See ARCHITECTURE.md 16.2, item B2 |
 | FR-23 | Org scan and workflow-drift report | Later | |
@@ -159,6 +159,8 @@ Priority: **P0** ships in v0.1.0, **P1** in v0.2.0, **Later** is backlog (`ROADM
 | FR-27 | `deploy_gate` | Later | Only if a real repo deploys to mainnet from CI |
 | FR-28 | Release-provenance and workflow-combination rules | Later | |
 | FR-29 | PyPI distribution | Later | |
+| FR-30 | npm lockfile registry host | P1 | HTTP(S) `resolved` URLs outside `registry.npmjs.org` in package-lock versions 1 to 3 are reported by package path and host; non-HTTP(S) sources are not paired or fetched |
+| FR-31 | Split-line install-hook lifecycle pairing | P0 | A fetch and shell handoff within a three-line inclusive forward window produce one HIGH on the fetch line; both lines obey `line_cap`, and package scripts remain same-line |
 
 ### 6.2 Detector catalog
 
@@ -191,7 +193,9 @@ Network alone is WARN because some legitimate Next.js configs fetch at build tim
 
 **`stellar_seed`** (P1, planned). D-06 retains offline detection of checksum-valid plaintext Stellar seeds in tracked files, including tests and docs. Require canonical uppercase Base32, 56 characters with `S` prefix, 35 decoded bytes, version `0x90`, a 32-byte seed and a little-endian CRC16-XMODEM checksum over the first 33 bytes. [Verified: source inspection, 2026-10-28 UTC; pinned SEP-0023 and `stellar/go` references in `ARCHITECTURE.md` 9.4.] Checksum-valid test vectors are not exempt: validity says nothing about funding, live use or testnet use. Findings remain suppressible with a reason through the existing trusted-base, occurrence-aware mechanism. No assignment context or entropy threshold is required. Collector limits and `line_cap` still apply; word-character adjacency can prevent a regex match. Split strings, other encodings, hex seeds, mnemonics and history are outside this detector's scope. Reference-derived tests and implementation remain tasks 6.2 and 6.3; no network or live-key verification during a scan.
 
-**`cargo_vectors`** (P1). `.cargo/config.toml` `runner`, `linker` or `rustc-wrapper` containing a shell; custom `build = "<path>"`; git dependencies without `rev`; `[patch]` or `[replace]` to git or path sources; `build.rs` network or shell capability.
+**`cargo_vectors`** (P1). The implemented dependency-source slice reads every tracked `Cargo.toml`: it reports `[patch.*]`, Git dependencies under `dependencies`, `dev-dependencies`, `build-dependencies` and `workspace.dependencies`, and path dependencies that escape the repository. Registry versions and in-repository paths are clean. A malformed manifest becomes a detector error. Remaining work from the original catalog is `.cargo/config.toml` runner/linker/wrapper, custom `build`, `[replace]` and `build.rs` capability checks.
+
+**`npm_registry`** (P1). Parse `package-lock.json` versions 1 to 3 and report each HTTP(S) `resolved` host other than exactly `registry.npmjs.org`, including the package path and host. Git, file, link and workspace sources are not fetched. Malformed JSON is a detector error. Private registry hosts need a reasoned suppression until the allowlist is policy-configurable.
 
 **Deferred detectors:** `deploy_gate` (heuristic, no repo in scope deploys from CI), SEP-58 metadata presence (SEP not final), advisory triage (cargo-audit and cargo-deny own detection).
 
@@ -375,5 +379,6 @@ Each becomes a permanent regression test in Airlock and must fail closed.
 Status, task 3.9: cases 1 to 5 and 7 run as `tests/bypass/test_bypass_<n>_<slug>.py`, each asserting
 the rule ids and severities rather than a bare exit code, and case 3 runs the payload with and
 without the inline marker to prove the marker changes nothing. Case 6 is a skipped test naming task
-6.4, because `.cargo/config.toml` has no role and `cargo_vectors` is not written yet; the skip is
-the honest record and it turns into a normal test when 6.4 lands.
+6.4, because `.cargo/config.toml` has no role and the implemented `cargo_vectors` dependency-source
+checks do not cover runner configuration. The skip is the honest record until the remaining 6.4
+vectors give that file a trusted role and check its runner settings.

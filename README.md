@@ -30,8 +30,8 @@ It is a scanner for a specific attack class, not a general-purpose antivirus.
 <!-- METRICS:START -->
 | Indicator | Value | Source |
 |---|---|---|
-| Test Suite | **709 passing** | `python -m pytest` |
-| Builtin Rules | **22 verified** across 4 families | `rules/builtin` |
+| Test Suite | **755 passing** | `python -m pytest` |
+| Builtin Rules | **26 verified** across 6 families | `rules/builtin` |
 | Runtime Dependencies | **0 external dependencies** | `pyproject.toml` |
 | Scanning Modes | **`full` / `pr` / `diff`** | CLI specification |
 <!-- METRICS:END -->
@@ -41,13 +41,13 @@ installer does not exist yet.
 
 | | |
 |---|---|
-| Works today | `airlock scan` in console, GitHub-annotation and JSON output, plus a step summary; `airlock manifest add` and `manifest check`; 22 rules across three code detectors and the pattern engine; 664 tests in CI |
+| Works today | `airlock scan` in console, GitHub-annotation and JSON output, plus a step summary; `airlock manifest add` and `manifest check`; 26 rules across five code detectors and the pattern engine; 738 test cases registered in CI |
 | Not built yet | the composite GitHub Action (`action.yml`), the Soroban-side detectors, the build-script and native-binary rules, SARIF output |
 | Usable now | as a CLI, from a checkout or an installed wheel, on any git repository |
 
 There is no `uses: posture-sec/airlock@…` line to copy into a workflow, and no package index
 release. Do not treat a scan from this build as complete coverage: a clean report means nothing
-matched the twenty-two rules that ship, which is a narrower claim than "no compromise found". Track
+matched the twenty-six rules that ship, which is a narrower claim than "no compromise found". Track
 what exists in [ROADMAP.md](ROADMAP.md) and read the design in
 [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -88,7 +88,7 @@ that was not built from the reviewed source is named.
 
 | Rule | Severity | Shape |
 |---|---|---|
-| `wasm-unlisted` | HIGH | an artifact with no manifest entry, including a git LFS pointer wearing a `.wasm` name |
+| `wasm-unlisted` | HIGH | an artifact with no manifest entry, including an unknown or unresolved Git LFS pointer |
 | `wasm-hash-mismatch` | HIGH | an artifact whose bytes are not the bytes the manifest recorded |
 | `wasm-path-moved` | WARN | a known hash at a path the manifest does not list |
 | `wasm-manifest-stale` | WARN | an entry whose file is gone |
@@ -110,8 +110,9 @@ extensionless file or under `vendor/` is read instead of waved past. Prose is ou
 package lifecycle scripts under `package.json`, install hooks under `.husky/` and `.githooks/`, and
 editor auto-run settings. Whole-file shapes belong to the engine's pattern path, and the pairings
 that need two lines judged together (a secret read and displayed, a privileged checkout of a
-contributor's head, a fetched script handed to a shell) are code, because one regex for those is
-quadratic on a line of repeated `curl` at the cap.
+contributor's head, a fetched script handed to a shell) are code. The install-hook fetch/execute
+pairing checks a bounded, three-line window; package-manifest scripts remain paired on their own
+line.
 
 | Rule | Severity | Shape |
 |---|---|---|
@@ -126,16 +127,27 @@ A file in one of those roles is treated as executed with credentials attached, s
 `line_cap` in it is HIGH rather than demoted to WARN. Every rule in the family is suppressible,
 following `cfg-process-spawn`, and none of them judge a string with masking.
 
+**`cargo_vectors`** reports `[patch.*]` overrides, Git dependencies and path dependencies that
+resolve outside the repository. Findings name the Cargo table, dependency key and source.
+In-repository path dependencies and registry-version dependencies stay clean.
+
+**`npm_registry`** reads `package-lock.json` versions 1 to 3 and reports HTTP(S) tarball URLs
+whose host is not exactly `registry.npmjs.org`, including the package path and host. Git, file,
+link and workspace sources are not fetched or paired. Private registries need a reasoned
+fingerprint suppression until the allowlist can be configured.
+
+Git LFS Wasm pointers are checked by their declared oid only when `.gitattributes` marks the path
+with `filter=lfs`; no object is fetched. Malformed or unmarked pointers remain HIGH and unlisted.
+
 The collector adds the state findings on top: `nul-in-text`, `non-utf8-text`, `skipped-oversize`,
 `skipped-unreadable`, `skipped-symlink`, `skipped-unmerged`, `submodule-present`. Every one of them
 is a finding, because a file that was not read must not look the same as a file that was clean.
 
-The Stellar-side detectors (`soroban_profile`, `stellar_seed`, `cargo_vectors`) are designed in
-[ARCHITECTURE.md](ARCHITECTURE.md) 9 and not implemented: those modules carry docstrings and no
-code. Of the rules ported from the old script, the text-side shapes and the CI-surface families
-above ship now; the `build.rs` and native-binary families wait on the Cargo work. What the
-CI-surface rules do not see (a secret read in one line and echoed in another, `workflow_run` and
-`issue_comment` triggers, a fetch hidden in a helper script) is listed in
+The broader Stellar-side detectors (`soroban_profile`, `stellar_seed`) and remaining Cargo vectors
+are described in [ARCHITECTURE.md](ARCHITECTURE.md) 9 and are not implemented. Cargo work still
+owed includes `.cargo/config.toml` runner/linker/wrapper checks, custom build scripts and `build.rs`
+capabilities. What the CI-surface rules do not see (a secret read in one line and echoed in another,
+`workflow_run` and `issue_comment` triggers, a fetch hidden in a helper script) is listed in
 [ARCHITECTURE.md](ARCHITECTURE.md) 9.7.
 
 ## What it does not do

@@ -1,0 +1,11 @@
+# npm tarball hosts are a supply-chain decision recorded in package-lock.json.
+
+[[rule]]
+id = "npm-registry-bypass"
+title = "npm package resolves outside the public registry"
+roles = ["source"]
+detector = "builtin:npm_registry"
+severity = "high"
+suppressible = true
+rationale = "A resolved HTTP(S) tarball host other than registry.npmjs.org supplies package bytes outside the standard registry. Private registries may be legitimate; until registry hosts are policy-configurable, accept one only with a fingerprint-keyed suppression and a reason. The detector parses the URL and never fetches it."
+tests = { positive = "npm_lockfile_registry", negative = "npm_lockfile_registry" }

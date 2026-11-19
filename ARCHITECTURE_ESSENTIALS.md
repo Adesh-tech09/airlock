@@ -81,9 +81,10 @@ Status: v0.2 (red-team revision). Outline of decisions an agent must not violate
 | `wasm_manifest` | `wasm-unlisted`, `wasm-hash-mismatch`, `wasm-path-moved`, `wasm-manifest-stale`, `wasm-archive-skipped` | P0 |
 | `builtin_patterns` | rule data, not a code detector: `pat-decode-eval`, `pat-invisible-unicode` (HIGH), `pat-exfil-endpoint`, `pat-obfuscator-id` (WARN) | P0 |
 | `ci_surface` | `pat-secret-dump`, `pat-ptr-head-checkout`, `pat-lifecycle-exec` (HIGH, in code) and `pat-privileged-trigger`, `pat-lifecycle-fetch`, `pat-editor-command-path` (WARN, rule data) | P0 |
+| `cargo_vectors` | `cargo-patch-override`, `cargo-git-dependency`, `cargo-path-escape` (remaining Cargo vectors are deferred) | P1 |
+| `npm_registry` | `npm-registry-bypass` | P1 |
 | `soroban_profile` | release-profile keys, `testutils` placement (contract crates only) | P1 |
 | `stellar_seed` | strkey `S...` seed with valid checksum; suppressible | P1 |
-| `cargo_vectors` | `.cargo/config.toml` runner/linker/wrapper, custom `build`, git deps, `[patch]` | P1 |
 
 Key behaviors:
 
@@ -92,6 +93,7 @@ Key behaviors:
 - `wasm_manifest` identifies Wasm by magic `00 61 73 6D`, never by extension. [9.2]
 - `pat-*` rules read every role that is code (`source`, `tooling-config`, `editor-autorun`, `other`) and not `doc`; the scope claim lives in each rule's `roles` list, so widening or narrowing it is a data change a reviewer sees. [9.6]
 - The CI surface has roles of its own (`workflow`, `package-manifest`, `install-hook`, plus `editor-autorun` for `.vscode/settings.json`) and each of the three new ones is in `SENSITIVE_ROLES`, because something executes them with credentials attached. A pairing rule reads its own half out of the WARN rule's pattern rather than restating it, and a code rule's regex is bound by `line_cap` like any other. [9.7]
+- The lifecycle fetch/exec pairing remains same-line for package scripts; install hooks may pair the fetch line with an execution line in a three-line inclusive forward window. Both lines obey `line_cap`, and one fetch yields at most one HIGH. npm lockfile URLs and Cargo manifests are parsed as data only; no package or object is fetched. [9.5, 9.7, 9.8]
 - D-06: owner-approved KEEP (2026-10-28 UTC). Planned `stellar_seed` is offline, checksum-valid plaintext in tracked files; valid test vectors also match, with no funding or live-use inference. Explicit reasoned suppressions only; implementation remains 6.2/6.3. [9.4]
 
 ## 8. Trust model [4]
