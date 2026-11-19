@@ -30,7 +30,7 @@ from queue import Empty
 import pytest
 
 from airlock import fingerprint, runner
-from airlock.detectors import DETECTOR_NAMES, ci_surface, config_role
+from airlock.detectors import DETECTOR_NAMES, ci_surface, config_role, stellar_seed
 from airlock.model import EMPTY_MANIFEST, FileEntry, Policy, Rule, ScanContext
 from airlock.roles import known_roles
 from airlock.rules import load_role_globs, load_rules
@@ -71,6 +71,7 @@ CODE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("ci_surface._EXEC_TARGET", ci_surface._EXEC_TARGET),
     ("config_role._DANGEROUS_COMMAND", config_role._DANGEROUS_COMMAND),
     ("config_role._NON_LITERAL_REQUIRE", config_role._NON_LITERAL_REQUIRE),
+    ("stellar_seed.CANDIDATE_RE", stellar_seed.CANDIDATE_RE),
     ("fingerprint._WS_RE", fingerprint._WS_RE),
 )
 

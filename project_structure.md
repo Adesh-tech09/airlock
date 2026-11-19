@@ -42,7 +42,7 @@ airlock/
     fingerprint.py                 # occurrence-aware fingerprints                                           (2.6)
     policy.py                      # trusted-base resolution, suppressions, manifest loading                 (2.7, 2.8)
     runner.py                      # runs detectors, wraps exceptions as detector-error                      (2.11)
-    strkey.py                      # planned canonical seed decode and CRC16-XMODEM, D-06 KEEP (P1)           (6.2)
+    strkey.py                      # canonical seed decode and CRC16-XMODEM, D-06 KEEP (P1)                (6.2)
     detectors/
       __init__.py                  # plain list of detector functions
       config_role.py               # P0                                                                      (3.1)
@@ -50,7 +50,7 @@ airlock/
       builtin_patterns.py          # stub; its rules are data run by the engine, not a code detector          (3.6, 3.7)
       ci_surface.py                # workflow, manifest and hook pairings that need two conditions              (3.6)
       soroban_profile.py           # P1                                                                      (6.1)
-      stellar_seed.py              # planned offline plaintext tracked-file seeds, D-06 KEEP (P1)            (6.3)
+      stellar_seed.py              # offline plaintext tracked-file seeds, D-06 KEEP (P1)                   (6.3)
       cargo_vectors.py             # Cargo patch, Git and escaped path dependency checks (P1)                 (9.14)
       npm_registry.py              # package-lock resolved-host check (P1)                                   (9.12)
     report/

@@ -170,7 +170,7 @@ Priority: **P0** ships in v0.1.0, **P1** in v0.2.0, **Later** is backlog (`ROADM
 |---|---|---|
 | `cfg-dynamic-code` | `eval`, `Function`, `new Function`, `vm.runIn*` | HIGH, not suppressible |
 | `cfg-network-exec` | network capability and (process spawn, dynamic code or `require()` of a non-literal) in the same file | HIGH |
-| `cfg-network` | `fetch`, `http(s).request`, `WebSocket`, `net.connect`, URL literal, alone | WARN |
+| `cfg-network` | `fetch`, `http(s).request`, `WebSocket`, `net.connect`; a URL literal alone only as a call argument or the value of a key naming a URL, endpoint, host or request | WARN |
 | `cfg-process-spawn` | `child_process` import: WARN; HIGH if the command is non-literal or contains `curl`, `wget`, `powershell`, `sh -c`, `base64`, `node -e` | tiered |
 | `cfg-chain-endpoint` | RPC hosts for TRON, Aptos and BSC | HIGH |
 | `cfg-appended-tail` | last non-empty line over `tail_max_len`, or a high-entropy blob near the end | HIGH |

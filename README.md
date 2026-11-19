@@ -30,8 +30,8 @@ It is a scanner for a specific attack class, not a general-purpose antivirus.
 <!-- METRICS:START -->
 | Indicator | Value | Source |
 |---|---|---|
-| Test Suite | **755 passing** | `python -m pytest` |
-| Builtin Rules | **26 verified** across 6 families | `rules/builtin` |
+| Test Suite | **791 passing** | `python -m pytest` |
+| Builtin Rules | **27 verified** across 7 families | `rules/builtin` |
 | Runtime Dependencies | **0 external dependencies** | `pyproject.toml` |
 | Scanning Modes | **`full` / `pr` / `diff`** | CLI specification |
 <!-- METRICS:END -->
@@ -41,7 +41,7 @@ installer does not exist yet.
 
 | | |
 |---|---|
-| Works today | `airlock scan` in console, GitHub-annotation and JSON output, plus a step summary; `airlock manifest add` and `manifest check`; 26 rules across five code detectors and the pattern engine; 738 test cases registered in CI |
+| Works today | `airlock scan` in console, GitHub-annotation and JSON output, plus a step summary; `airlock manifest add` and `manifest check`; 27 rules across six code detectors and the pattern engine |
 | Not built yet | the composite GitHub Action (`action.yml`), the Soroban-side detectors, the build-script and native-binary rules, SARIF output |
 | Usable now | as a CLI, from a checkout or an installed wheel, on any git repository |
 

@@ -67,14 +67,14 @@ def count_tests() -> int:
             )
             match = re.search(r"(\d+)\s+tests?\s+collected", res.stdout)
             if match:
-                # 756 collected (755 passed, 1 skipped)
+                # 792 collected (791 passed, 1 skipped)
                 total_collected = int(match.group(1))
                 return total_collected - 1 if total_collected > 700 else total_collected
         except Exception:
             continue
 
     # Fallback to known passing test suite count
-    return 755
+    return 791
 
 
 def generate_metrics_table(test_count: int, rule_count: int, family_count: int) -> str:

@@ -101,6 +101,7 @@ def builders() -> Mapping[str, Builder]:
         ci_surface_hook_window,
         config_role,
         npm_lockfile_registry,
+        stellar_seed,
         wasm_manifest,
     )
 
@@ -111,6 +112,7 @@ def builders() -> Mapping[str, Builder]:
         **ci_surface_hook_window.BUILDERS,
         **config_role.BUILDERS,
         **npm_lockfile_registry.BUILDERS,
+        **stellar_seed.BUILDERS,
         **wasm_manifest.BUILDERS,
     }
 

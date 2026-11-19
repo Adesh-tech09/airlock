@@ -36,8 +36,8 @@ roles = ["tooling-config"]
 detector = "pattern"
 severity = "warn"
 suppressible = true
-rationale = "A build step that reaches the network can be handed its payload after install, which no lockfile review would have seen. Alone this is a WARN: some legitimate Next.js configs fetch at build time."
-pattern = { kind = "regex", value = '''\brequire\s*\(\s*["'](?:node:)?(?:https?|net|dns|tls|child_process)["']\s*\)|\bfrom\s+["'](?:node:)?(?:https?|net)["']|\bfetch\s*\(|\baxios\b|node-fetch|XMLHttpRequest|WebSocket|\.request\s*\(|https?://''' }
+rationale = "A build step that reaches the network can be handed its payload after install, which no lockfile review would have seen. A URL literal alone is not a capability: it has to be a call argument or the value of a key naming a URL, endpoint, host or request, so a documentation URL inside a comment stays quiet. Alone this is a WARN: some legitimate Next.js configs fetch at build time."
+pattern = { kind = "regex", value = '''\brequire\s*\(\s*["'](?:node:)?(?:https?|net|dns|tls|child_process)["']\s*\)|\bfrom\s+["'](?:node:)?(?:https?|net)["']|\bfetch\s*\(|\baxios\b|node-fetch|XMLHttpRequest|WebSocket|\.request\s*\(|\(\s*["'`]https?://|(?i:(?:^|[\s{,(])["']?[A-Za-z0-9_.$-]{0,40}(?:url|endpoint|host|request|uri)[A-Za-z0-9_.-]{0,20}["']?\s*[:=]\s*["']?https?://)''' }
 tests = { positive = "cfg_network", negative = "cfg_network" }
 
 [[rule]]

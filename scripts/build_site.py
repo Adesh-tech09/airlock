@@ -50,6 +50,7 @@ FAMILIES: tuple[Family, ...] = (
     Family("ci_surface", "CI surface"),
     Family("cargo_vectors", "Cargo dependencies"),
     Family("npm_registry", "npm registry"),
+    Family("stellar_seed", "Stellar keys"),
     Family("wasm_manifest", "Artifact integrity"),
 )
 

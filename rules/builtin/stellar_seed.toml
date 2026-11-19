@@ -1,0 +1,20 @@
+# `stellar_seed` rules: a plaintext Stellar secret seed in a tracked file.
+#
+# D-06: KEEP, owner-approved 2026-10-28 UTC. The detector is offline and reports only candidates
+# whose StrKey checksum validates, so a shape that merely looks like a seed is not a finding. A
+# valid checksum says the encoding is intact; it does not say the seed is funded, live, used on
+# testnet or safe to publish (ARCHITECTURE.md 9.4).
+#
+# The rule is suppressible, because a repository may track a deliberate test vector. Suppress it
+# by fingerprint with a reason through the trusted-base mechanism; there is no test-directory or
+# testnet exemption.
+
+[[rule]]
+id = "stellar-seed"
+title = "Plaintext Stellar secret seed"
+roles = ["source", "doc", "tooling-config", "editor-autorun", "workflow", "package-manifest", "install-hook", "other"]
+detector = "builtin:stellar_seed"
+severity = "high"
+suppressible = true
+rationale = "A tracked Stellar secret seed hands whoever can read the repository the key. The finding is reported only when the StrKey checksum validates, so the encoding is intact; whether the seed is funded or live is not inferable offline and is not claimed."
+tests = { positive = "stellar_seed", negative = "stellar_seed" }

@@ -60,6 +60,7 @@ class TestShippedRuleSet:
             "pat-privileged-trigger",
             "pat-ptr-head-checkout",
             "pat-secret-dump",
+            "stellar-seed",
             "wasm-archive-skipped",
             "wasm-hash-mismatch",
             "wasm-manifest-stale",
