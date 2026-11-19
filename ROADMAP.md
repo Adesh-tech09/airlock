@@ -1,6 +1,6 @@
 # ROADMAP: Airlock
 
-Last updated: 2026-11-09 14:36 UTC
+Last updated: 2026-11-18 16:22 UTC
 
 Roadmap version: 1
 
@@ -43,7 +43,7 @@ The repository is 100% ready when every task in Phases 0 to 8 is done and every 
 | 6 | Stellar detectors | 0 | 5 | 0% |
 | 7 | Hardening and edge cases | 4 | 13 | 31% |
 | 8 | Release v0.2.0 and community | 2 | 6 | 33% |
-| 9 (backlog) | Backlog | 0 | 10 | 0% |
+| 9 (backlog) | Backlog | 0 | 11 | 0% |
 | **Phases 0 to 8** | **Readiness total** | **46** | **95** | **48%** |
 | Gates | G1 to G10 | 0 | 10 | 0% |
 <!-- PROGRESS:END -->
@@ -283,6 +283,7 @@ families.
 - [ ] **9.8** Workflow-combination rule: write token plus unpinned third-party action (motivated by `soroban-cost-linter`).
 - [ ] **9.9** PyPI distribution with trusted publishing. Check first that the PyPI name `airlock` is free; it may be taken [Guessing].
 - [ ] **9.10** Optional advisory-triage integration (consume cargo-audit or cargo-deny output).
+- [~] **9.11** Fingerprint fallback for a state finding with no message: key on the rule, path and line instead of raising. S. Deps: 2.6. Done when: `ARCHITECTURE.md` 7.3 names the fallback and a blank-message finding is numbered and reported rather than turning the scan into exit 2. (started 2026-11-18 15:05: the fallback, three unit regressions and one scan-level regression are written and pass on Windows, but the row stays `[~]` until the whole suite is green, which it cannot be on that machine for three reasons unrelated to this change: `tests/unit/test_collector.py` does not collect, six `manifest add`/`check` tests hit a CRLF round-trip bug, and the 1 MB ReDoS budget misses its 1200 ms target)
 
 ## 6. Dependency map (critical path)
 
@@ -325,6 +326,7 @@ Newest first. One row per merged change.
 
 | Date (UTC) | Change | Tasks |
 |---|---|---|
+| 2026-11-18 16:22 | Key a state finding with no evidence, no file SHA-256 and a blank message on `state:<rule_id>:<path>:<line>` instead of raising. The `ValueError` reached the CLI as exit 2, so one such finding dropped the whole report and every other finding in it. `ARCHITECTURE.md` 7.3 records the fallback, and the three existing key branches (evidence, file digest, message) are unchanged, so no pinned fingerprint moves. Tests: the `ValueError` case in `tests/unit/test_fingerprint.py` is replaced by three regressions (the fallback value, stability across runs with lines still distinct, and numbering without an exception), and `tests/unit/test_cli.py` gains one scan-level regression that runs the real pipeline on a temporary git repository with a detector emitting a blank-message state finding and asserts the report carries that finding, its fingerprint and the scan's own `cfg-dynamic-code` finding at exit 1. Checks run on Windows with Python 3.15.2: `python -m pytest --ignore=tests/unit/test_collector.py` runs the rest of the suite, whose pass and fail counts are deliberately not quoted because the timing-sensitive budgets in `test_redos.py` move them between runs; `ruff check` and `ruff format --check` are clean on the touched files; `mypy src` is clean; `python -m airlock scan --mode full .` exits 0 with 0 HIGH, 0 WARN, 2 INFO over 130 files; `scripts/roadmap_progress.py --check` exits 0. The suite is not green and none of the failures come from this change: `tests/unit/test_collector.py` fails at collection because `os.geteuid` does not exist on Windows, so that module's tests neither run nor pass; the six `manifest add`/`manifest check` failures are a CRLF round-trip bug (`_working_text` reads bytes and `_split_entries` returns the header with its `\r` intact, so Windows text mode writes `\r\r\n` and `tomllib` rejects the next read); and `test_redos.py` is timing-sensitive on this machine: its 1 MB budget took 1928 ms against a 1200 ms target, and its 60 ms per-line budget has both passed and failed at around 85 ms across repeated runs, so neither budget is stable enough to quote as a fixed count. `scripts/check_roadmap_touched.sh` needs a base ref and was not run. | 9.11 |
 | 2026-11-09 14:36 | Finalize Wave 11 readiness packet: decide D-05 (Accepted), update application packet in docs/wave/application.md with Wave 11 window (Nov 18–25), 709 passed tests, and live docs site link. Verified 15 scoped issues staged in docs/wave/issues/ and 23 labels on GitHub. | 8.4, D-05 |
 | 2026-11-09 14:06 | Implemented dynamic README metrics synchronization (`scripts/sync_readme.py`) generating live Shields.io endpoint JSON files under `site/data/` for tests (709 passing) and rules (22 verified), and enforced with `--check` in the `roadmap-check` workflow. | none ticked |
 | 2026-11-09 13:29 | Install OpenSSF Scorecard workflow (.github/workflows/scorecard.yml), add OpenSSF Scorecard badge, Roadmap check badge, and Live Docs badge to README. | 1.7 |
