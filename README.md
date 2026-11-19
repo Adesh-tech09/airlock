@@ -30,7 +30,7 @@ It is a scanner for a specific attack class, not a general-purpose antivirus.
 <!-- METRICS:START -->
 | Indicator | Value | Source |
 |---|---|---|
-| Test Suite | **738 passing** | `python -m pytest` |
+| Test Suite | **755 passing** | `python -m pytest` |
 | Builtin Rules | **26 verified** across 6 families | `rules/builtin` |
 | Runtime Dependencies | **0 external dependencies** | `pyproject.toml` |
 | Scanning Modes | **`full` / `pr` / `diff`** | CLI specification |

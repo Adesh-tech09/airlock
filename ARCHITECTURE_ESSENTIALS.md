@@ -21,6 +21,7 @@ Status: v0.2 (red-team revision). Outline of decisions an agent must not violate
 - Never run scanner code from the scanned checkout; it comes from the pinned Action path. [4, 10]
 - Policy, suppressions and manifest come from a trusted base: PR base in `pr` mode, `github.event.before` in `push` mode. [6.5]
 - Never read policy from HEAD in `pr` or `push` mode.
+- A base config copy over `MAX_CONFIG_BYTES` is refused before decoding: `skipped-unreadable` (HIGH) and the shipped defaults apply. [6.5, 7.6]
 - Never skip a file silently. Every skip is a finding. [8]
 - No default directory skips (no `vendor/`, `dist/`, `node_modules/` exemptions). [6.1]
 - Never exit 0 after a detector exception, invalid config, missing git, old Python or unresolvable base. [8]

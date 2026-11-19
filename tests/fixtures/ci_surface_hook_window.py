@@ -20,4 +20,4 @@ def ci_lifecycle_hook_window() -> Fixture:
     )
 
 
-BUILDERS = {"ci_lifecycle_hook_window": ci_lifecycle_hook_window}
+BUILDERS: dict[str, object] = {}
