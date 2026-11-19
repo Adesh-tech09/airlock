@@ -1,6 +1,6 @@
 # ROADMAP: Airlock
 
-Last updated: 2026-11-09 14:36 UTC
+Last updated: 2026-11-19 09:48 UTC
 
 Roadmap version: 1
 
@@ -43,7 +43,7 @@ The repository is 100% ready when every task in Phases 0 to 8 is done and every 
 | 6 | Stellar detectors | 0 | 5 | 0% |
 | 7 | Hardening and edge cases | 4 | 13 | 31% |
 | 8 | Release v0.2.0 and community | 2 | 6 | 33% |
-| 9 (backlog) | Backlog | 0 | 10 | 0% |
+| 9 (backlog) | Backlog | 0 | 11 | 0% |
 | **Phases 0 to 8** | **Readiness total** | **46** | **95** | **48%** |
 | Gates | G1 to G10 | 0 | 10 | 0% |
 <!-- PROGRESS:END -->
@@ -283,6 +283,7 @@ families.
 - [ ] **9.8** Workflow-combination rule: write token plus unpinned third-party action (motivated by `soroban-cost-linter`).
 - [ ] **9.9** PyPI distribution with trusted publishing. Check first that the PyPI name `airlock` is free; it may be taken [Guessing].
 - [ ] **9.10** Optional advisory-triage integration (consume cargo-audit or cargo-deny output).
+- [~] **9.13** A config file at the trusted base over `MAX_CONFIG_BYTES` is refused before it is decoded instead of being parsed, and the scan continues on the shipped defaults. M. Deps: 2.7. Done when: `_blob_at` asks git for the blob's size, a base `airlock.toml` or `wasm-manifest.toml` over the limit returns `skipped-unreadable` at HIGH with `BOOTSTRAP_POLICY` and `EMPTY_MANIFEST` in its place, the change's copy is neither read nor compared so no `policy-changed` is claimed, and `tests/unit/test_policy_base_size_cap.py` proves it in a real temporary git repository. Ids `9.11` and `9.12` are claimed by pull requests #108 and #109 in flight, so this task takes `9.13`. (started 2026-11-19 09:48: `_blob_at` now returns a small `_BaseBlob` holding either the text, absence, or the size that made the blob unreadable, and reads `git cat-file -s` before `git show`, so an oversize base is never decoded or handed to `tomllib`. Both callers return the shipped defaults with one `skipped-unreadable` HIGH naming the path, the size and the base, and return before the change's copy is read, so `policy-changed` is not claimed for a comparison that never happened; a head copy over the limit is reported as `policy-changed` with a summary that says the two copies were not compared. The cap is the existing `MAX_CONFIG_BYTES` with the same `>` comparison `_working_text` uses, and no state id or setting was added. Four cases in `tests/unit/test_policy_base_size_cap.py` cover an oversize base policy, a differing head copy that must not produce `policy-changed`, a base exactly at the limit that is still read, and an oversize base manifest that leaves `EMPTY_MANIFEST`; a fifth covers the oversize head copy. The row stays `[~]` until CI confirms the checks. Not covered: a base blob whose `git show` fails for another reason still raises, which is unchanged behavior)
 
 ## 6. Dependency map (critical path)
 
@@ -325,6 +326,7 @@ Newest first. One row per merged change.
 
 | Date (UTC) | Change | Tasks |
 |---|---|---|
+| 2026-11-19 09:48 | A protected config file at the trusted base had no ceiling, unlike the same file in the working tree. `_blob_at` asked `git show` for the whole blob, so a base `airlock.toml` or `wasm-manifest.toml` of any size was decoded and parsed, and a parse failure ended the run with exit 2 and no report. The size is now read with `git cat-file -s` before the content, anything over the existing `MAX_CONFIG_BYTES` is never decoded, and the scan continues on `BOOTSTRAP_POLICY` and `EMPTY_MANIFEST` with one `skipped-unreadable` HIGH. The change's copy is not read at all in that case, so no `policy-changed` is claimed for a comparison that never happened; a head copy over the limit is compared only far enough to say the two copies were not compared. No new finding id, setting or dependency. Five cases in `tests/unit/test_policy_base_size_cap.py` run over a real temporary git repository, including a base exactly at the limit that is still read. `ARCHITECTURE.md` 6.5, 7.6 and 8 and `ARCHITECTURE_ESSENTIALS.md` section 2 record the refusal. 9.13 stays `[~]` until CI is green. | 9.13 |
 | 2026-11-09 14:36 | Finalize Wave 11 readiness packet: decide D-05 (Accepted), update application packet in docs/wave/application.md with Wave 11 window (Nov 18–25), 709 passed tests, and live docs site link. Verified 15 scoped issues staged in docs/wave/issues/ and 23 labels on GitHub. | 8.4, D-05 |
 | 2026-11-09 14:06 | Implemented dynamic README metrics synchronization (`scripts/sync_readme.py`) generating live Shields.io endpoint JSON files under `site/data/` for tests (709 passing) and rules (22 verified), and enforced with `--check` in the `roadmap-check` workflow. | none ticked |
 | 2026-11-09 13:29 | Install OpenSSF Scorecard workflow (.github/workflows/scorecard.yml), add OpenSSF Scorecard badge, Roadmap check badge, and Live Docs badge to README. | 1.7 |
