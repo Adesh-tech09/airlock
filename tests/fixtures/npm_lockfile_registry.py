@@ -23,9 +23,7 @@ def npm_lockfile_registry() -> Fixture:
         ),
         negative=_lock(
             '{"lockfileVersion":3,"packages":{'
-            '"node_modules/left-pad":{"resolved":"'
-            + REGISTRY
-            + 'left-pad/-/left-pad.tgz"},'
+            '"node_modules/left-pad":{"resolved":"' + REGISTRY + 'left-pad/-/left-pad.tgz"},'
             '"node_modules/git-package":{"resolved":"'
             + GIT_URL
             + '"},"node_modules/local":{"resolved":"file:../local"}}}'

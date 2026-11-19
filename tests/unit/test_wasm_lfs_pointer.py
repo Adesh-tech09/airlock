@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 
 from tests.fixtures import Case, context
-from tests.fixtures.wasm_lfs_pointer import PATH, _entry, _case, pointer
+from tests.fixtures.wasm_lfs_pointer import PATH, _case, _entry, pointer
 from tests.fixtures.wasm_manifest import wasm_bytes
 
 from airlock.model import Manifest, Severity

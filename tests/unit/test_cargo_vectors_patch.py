@@ -31,26 +31,19 @@ class TestCargoVectors:
         assert any("escaped" in message and OUTSIDE_PATH in message for message in messages)
 
     def test_registry_version_and_in_repository_path_are_clean(self) -> None:
-        case = cargo(
-            "[dependencies]\n"
-            'sample = "1.2.3"\n'
-            'local = { path = "crates/local" }\n'
-        )
+        case = cargo('[dependencies]\nsample = "1.2.3"\nlocal = { path = "crates/local" }\n')
 
         assert not any(item.rule_id.startswith("cargo-") for item in findings(case))
 
     def test_git_dependency_in_workspace_table_is_found(self) -> None:
-        case = cargo(
-            "[workspace.dependencies]\n"
-            'remote = { git = "' + GIT_SOURCE + '" }\n'
-        )
+        case = cargo('[workspace.dependencies]\nremote = { git = "' + GIT_SOURCE + '" }\n')
 
         assert any("remote" in item.message for item in findings(case))
 
     def test_inline_and_standard_dependency_tables_are_handled(self) -> None:
         case = cargo(
             "[dependencies]\n"
-            "inline = { version = \"1\", git = \"" + GIT_SOURCE + "\" }\n"
+            'inline = { version = "1", git = "' + GIT_SOURCE + '" }\n'
             "\n"
             "[dev-dependencies.standard]\n"
             'git = "' + GIT_SOURCE + '"\n'
@@ -60,6 +53,6 @@ class TestCargoVectors:
         assert len(found) >= 2
 
     def test_malformed_toml_becomes_detector_error(self) -> None:
-        found = findings(cargo("[dependencies\nsample = \"1.2.3\"\n"))
+        found = findings(cargo('[dependencies\nsample = "1.2.3"\n'))
 
         assert any(item.rule_id == "detector-error" for item in found)

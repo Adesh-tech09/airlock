@@ -22,11 +22,7 @@ def cargo_vectors_patch() -> Fixture:
             'git_dep = { git = "' + GIT_SOURCE + '" }\n'
             'escaped = { path = "' + OUTSIDE_PATH + '" }\n'
         ),
-        negative=cargo(
-            "[dependencies]\n"
-            'sample = "1.2.3"\n'
-            'local = { path = "crates/local" }\n'
-        ),
+        negative=cargo('[dependencies]\nsample = "1.2.3"\nlocal = { path = "crates/local" }\n'),
     )
 
 

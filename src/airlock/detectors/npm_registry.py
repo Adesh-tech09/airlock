@@ -71,9 +71,7 @@ def _host(resolved: object, package_path: str) -> str | None:
     return (parsed.hostname or "<missing>").lower()
 
 
-def _lockfile_findings(
-    entry: FileEntry, document: object, rule: Rule
-) -> Iterable[PendingFinding]:
+def _lockfile_findings(entry: FileEntry, document: object, rule: Rule) -> Iterable[PendingFinding]:
     for package_path, metadata in _package_entries(document):
         resolved = metadata.get("resolved")
         host = _host(resolved, package_path)

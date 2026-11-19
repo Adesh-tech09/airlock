@@ -31,9 +31,7 @@ def _mapping(value: object) -> Mapping[str, object] | None:
 def _outside_repository(manifest_path: str, dependency_path: str) -> bool:
     normalized_path = dependency_path.replace("\\", "/")
     if PurePosixPath(normalized_path).is_absolute() or (
-        len(normalized_path) >= 3
-        and normalized_path[1] == ":"
-        and normalized_path[2] == "/"
+        len(normalized_path) >= 3 and normalized_path[1] == ":" and normalized_path[2] == "/"
     ):
         return True
     manifest_dir = posixpath.dirname(manifest_path)
@@ -75,7 +73,8 @@ def _dependency_findings(
         dependency = _mapping(details)
         if dependency is None:
             if not isinstance(details, str):
-                raise ValueError(f"Cargo [{table_name}] dependency {name} must be a table or version")
+                err = f"Cargo [{table_name}] dependency {name} must be a table or version"
+                raise ValueError(err)
             continue
         git_source = dependency.get("git")
         if isinstance(git_source, str):
@@ -148,9 +147,7 @@ def _manifest_findings(
     entry: FileEntry, document: Mapping[str, object], rules: Mapping[str, Rule]
 ) -> Iterable[PendingFinding]:
     for table_name in DEPENDENCY_TABLES:
-        yield from _dependency_findings(
-            entry, table_name, document.get(table_name), rules
-        )
+        yield from _dependency_findings(entry, table_name, document.get(table_name), rules)
 
     workspace = _mapping(document.get("workspace"))
     if document.get("workspace") is not None and workspace is None:

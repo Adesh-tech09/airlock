@@ -4,18 +4,14 @@ from __future__ import annotations
 
 from airlock.model import Manifest, WasmEntry
 
-from . import Case, File, digest
+from . import Case, File
 
 PATH = "contracts/sample.wasm"
 ATTRIBUTES = "*.wasm filter=lfs diff=lfs merge=lfs -text\n"
 
 
 def pointer(oid: str, size: int) -> str:
-    return (
-        "version https://git-lfs.github.com/spec/v1\n"
-        f"oid sha256:{oid}\n"
-        f"size {size}\n"
-    )
+    return f"version https://git-lfs.github.com/spec/v1\noid sha256:{oid}\nsize {size}\n"
 
 
 def _entry(oid: str) -> WasmEntry:
@@ -28,11 +24,17 @@ def _entry(oid: str) -> WasmEntry:
     )
 
 
-def _case(pointer_text: str, manifest: Manifest = Manifest(), *, attributes: str = ATTRIBUTES) -> Case:
+def _case(
+    pointer_text: str,
+    manifest: Manifest | None = None,
+    *,
+    attributes: str = ATTRIBUTES,
+) -> Case:
+    manifest_obj = Manifest() if manifest is None else manifest
     return Case(
         files=(
             File(".gitattributes", text=attributes),
             File(PATH, text=pointer_text),
         ),
-        manifest=manifest,
+        manifest=manifest_obj,
     )

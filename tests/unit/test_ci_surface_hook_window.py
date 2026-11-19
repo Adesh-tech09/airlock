@@ -20,9 +20,7 @@ def hook(*lines: str) -> Case:
 class TestInstallHookWindow:
     def test_split_fetch_and_execute_is_high_on_the_fetch_line(self) -> None:
         found = [
-            item
-            for item in findings(hook(FETCH, EXECUTE))
-            if item.rule_id == "pat-lifecycle-exec"
+            item for item in findings(hook(FETCH, EXECUTE)) if item.rule_id == "pat-lifecycle-exec"
         ]
 
         assert len(found) == 1
@@ -38,7 +36,7 @@ class TestInstallHookWindow:
             files=(
                 File(
                     "package.json",
-                    text='{"scripts":{"postinstall":"' + FETCH + '\\n' + EXECUTE + '"}}\n',
+                    text='{"scripts":{"postinstall":"' + FETCH + "\\n" + EXECUTE + '"}}\n',
                 ),
             )
         )
@@ -49,12 +47,8 @@ class TestInstallHookWindow:
         over_cap_fetch = hook(FETCH + (" " * 91), EXECUTE)
         over_cap_execute = hook(FETCH, EXECUTE + (" " * 91))
 
-        assert not any(
-            item.rule_id == "pat-lifecycle-exec" for item in findings(over_cap_fetch)
-        )
-        assert not any(
-            item.rule_id == "pat-lifecycle-exec" for item in findings(over_cap_execute)
-        )
+        assert not any(item.rule_id == "pat-lifecycle-exec" for item in findings(over_cap_fetch))
+        assert not any(item.rule_id == "pat-lifecycle-exec" for item in findings(over_cap_execute))
 
     def test_hook_window_is_three_lines_inclusive(self) -> None:
         inside = findings(hook(FETCH, "# reviewed", EXECUTE))

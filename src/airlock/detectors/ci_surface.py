@@ -208,9 +208,7 @@ def _lifecycle_execs(
                 entry,
                 number,
                 evidence=line,
-                message=(
-                    f"{rule.title}: the fetched result reaches a shell on line {exec_line}"
-                ),
+                message=(f"{rule.title}: the fetched result reaches a shell on line {exec_line}"),
             )
         )
     return findings
