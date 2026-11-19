@@ -1,6 +1,6 @@
 # ROADMAP: Airlock
 
-Last updated: 2026-11-19 11:21 UTC
+Last updated: 2026-11-19 11:25 UTC
 
 Roadmap version: 1
 
@@ -333,7 +333,7 @@ Newest first. One row per merged change.
 
 | Date (UTC) | Change | Tasks |
 |---|---|---|
-| 2026-11-19 11:11 | Implement the four scoped Wave issues: bounded install-hook pairing, npm lockfile host checks, manifest matching for LFS oids, and Cargo dependency-source findings. Add focused fixture/tests and update PRD, architecture, essentials, project map, README and generated site data. Tests were not executed as requested; CI verification is pending on branch `feat/wave-42-46-detectors`. | 9.11, 9.12, 9.13, 9.14, FR-18, FR-20, FR-30, FR-31, ADR-020, ADR-021, D-10, D-11 |
+| 2026-11-19 11:25 | Open PR #111 for the four scoped Wave issues: bounded install-hook pairing, npm lockfile host checks, manifest matching for LFS oids, and Cargo dependency-source findings. Add focused fixture/tests and update PRD, architecture, essentials, project map, README and generated site data. Tests were not executed as requested; CI verification is pending on `feat/wave-42-46-detectors`. | 9.11, 9.12, 9.13, 9.14, FR-18, FR-20, FR-30, FR-31, ADR-020, ADR-021, D-10, D-11 |
 | 2026-11-09 14:36 | Finalize Wave 11 readiness packet: decide D-05 (Accepted), update application packet in docs/wave/application.md with Wave 11 window (Nov 18–25), 709 passed tests, and live docs site link. Verified 15 scoped issues staged in docs/wave/issues/ and 23 labels on GitHub. | 8.4, D-05 |
 | 2026-11-09 14:06 | Implemented dynamic README metrics synchronization (`scripts/sync_readme.py`) generating live Shields.io endpoint JSON files under `site/data/` for tests (709 passing) and rules (22 verified), and enforced with `--check` in the `roadmap-check` workflow. | none ticked |
 | 2026-11-09 13:29 | Install OpenSSF Scorecard workflow (.github/workflows/scorecard.yml), add OpenSSF Scorecard badge, Roadmap check badge, and Live Docs badge to README. | 1.7 |
