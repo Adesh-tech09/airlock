@@ -13,7 +13,9 @@ defaults, no suppressions to inherit. Nothing here falls back to HEAD.
 Invalid TOML, an unsupported or missing `version` and an unresolvable `pr` base raise
 `ValueError`, which the CLI turns into exit 2. Unknown keys are the exception: they come back as
 `policy-unknown-key` findings, because a misspelled key leaves its setting at the default and the
-finding is the only place that says so.
+finding is the only place that says so. A protected file at the base over `MAX_CONFIG_BYTES` is
+refused before it is decoded, reported as `skipped-unreadable` and the scan continues on the
+shipped defaults: a huge config must not become a parse failure with no report at all.
 
 Like `collector.py`, this is one of the two modules allowed to run `subprocess`, always through
 `git_text` with a fixed argument list and never through a shell.
@@ -77,6 +79,7 @@ UNTRUSTED_SOURCE_RULE_ID = "untrusted-policy-source"
 UNKNOWN_KEY_RULE_ID = "policy-unknown-key"
 SUPPRESSION_INVALID_RULE_ID = "suppression-invalid"
 SUPPRESSION_EXPIRING_RULE_ID = "suppression-expiring"
+SKIP_UNREADABLE_RULE_ID = "skipped-unreadable"
 
 SUPPRESSION_REQUIRED = SUPPRESSION_KEYS - {"expires"}
 WASM_REQUIRED = WASM_ENTRY_KEYS - {"note"}
@@ -221,45 +224,92 @@ def _short(value: str | None) -> str:
     return value[:12]
 
 
-def _blob_at(repo_root: Path, ref: str, path: str) -> str | None:
-    """One file's text at a commit, or None when that commit does not carry it."""
+@dataclass(frozen=True, slots=True)
+class _BaseBlob:
+    """One protected file at a commit.
+
+    `text` is None when the commit does not carry the path. `oversize` is the blob's size in
+    bytes when the commit does carry it but the blob is too large to be a config file. The two
+    are separate because "the base has no such file" means the change added it, while "the
+    base's copy cannot be read" must never be reported that way.
+    """
+
+    text: str | None = None
+    oversize: int | None = None
+
+    @property
+    def absent(self) -> bool:
+        return self.text is None and self.oversize is None
+
+
+def _blob_at(repo_root: Path, ref: str, path: str) -> _BaseBlob:
+    """One file at a commit: its text, that it is absent, or that it is too large to read.
+
+    The size is asked for before the content, so a base holding a multi-megabyte "config" is
+    never decoded or handed to `tomllib`. `MAX_CONFIG_BYTES` is the ceiling `full` mode already
+    applies to the working tree, and the trusted base was the one config read without one: a
+    change could commit a huge policy, have it become the base later, and turn the next run into
+    a parse failure with no report at all.
+    """
     if not git_text(repo_root, "ls-tree", "--name-only", ref, "--", path):
-        return None
-    return git_text(repo_root, "show", f"{ref}:{path}")
+        return _BaseBlob()
+    size = int(git_text(repo_root, "cat-file", "-s", f"{ref}:{path}"))
+    if size > MAX_CONFIG_BYTES:
+        return _BaseBlob(oversize=size)
+    return _BaseBlob(text=git_text(repo_root, "show", f"{ref}:{path}"))
+
+
+def _oversize_base(path: str, size: int, ref: str) -> PendingFinding:
+    """The base's copy is over the limit, so the shipped defaults apply in its place."""
+    return _state(
+        SKIP_UNREADABLE_RULE_ID,
+        Severity.HIGH,
+        path,
+        f"{path} at base {_short(ref)} is {size} bytes, over the {MAX_CONFIG_BYTES} byte "
+        "limit for a config file, so it was not read and the shipped defaults apply in its place",
+        evidence=f"{path} {size} bytes at base {_short(ref)}",
+    )
 
 
 def _policy_at_base(
     repo_root: Path, ref: str, head: str, path: str
 ) -> tuple[Policy, tuple[PendingFinding, ...]]:
-    base_text = _blob_at(repo_root, ref, path)
-    head_text = _blob_at(repo_root, head, path)
-    changed = _change_finding(path, "the policy", base_text, head_text, ref)
+    base = _blob_at(repo_root, ref, path)
+    if base.oversize is not None:
+        # The base's copy cannot be read, so the change's copy is not read either: counting a
+        # diff against a file that was never loaded would claim a change nobody saw, and parsing
+        # the change's copy is the bypass this path exists to prevent.
+        return BOOTSTRAP_POLICY, (_oversize_base(path, base.oversize, ref),)
+    head_blob = _blob_at(repo_root, head, path)
+    changed = _change_finding(path, "the policy", base, head_blob, ref)
     pending = () if changed is None else (changed,)
-    if base_text is None:
+    if base.text is None:
         # The base has no policy file, so the change under review is the first to carry one. It
         # is reported and ignored: reading it would let the change set its own rules.
         return BOOTSTRAP_POLICY, pending
-    policy, key_pending = policy_from_toml(base_text, path=path, source=f"base {_short(ref)}")
+    policy, key_pending = policy_from_toml(base.text, path=path, source=f"base {_short(ref)}")
     return policy, pending + key_pending
 
 
 def _manifest_at_base(
     repo_root: Path, ref: str, head: str, path: str
 ) -> tuple[Manifest, tuple[PendingFinding, ...]]:
-    base_text = _blob_at(repo_root, ref, path)
-    head_text = _blob_at(repo_root, head, path)
-    changed = _change_finding(path, "the Wasm manifest", base_text, head_text, ref)
+    base = _blob_at(repo_root, ref, path)
+    if base.oversize is not None:
+        return EMPTY_MANIFEST, (_oversize_base(path, base.oversize, ref),)
+    head_blob = _blob_at(repo_root, head, path)
+    changed = _change_finding(path, "the Wasm manifest", base, head_blob, ref)
     pending = () if changed is None else (changed,)
-    if base_text is None:
+    if base.text is None:
         return EMPTY_MANIFEST, pending
-    manifest, key_pending = manifest_from_toml(base_text, path=path, source=f"base {_short(ref)}")
+    manifest, key_pending = manifest_from_toml(base.text, path=path, source=f"base {_short(ref)}")
     return manifest, pending + key_pending
 
 
 def _change_finding(
-    path: str, what: str, base_text: str | None, head_text: str | None, ref: str
+    path: str, what: str, base: _BaseBlob, head: _BaseBlob, ref: str
 ) -> PendingFinding | None:
-    summary = _change_summary(base_text, head_text)
+    summary = _change_summary(base, head)
     if summary is None:
         return None
     return _state(
@@ -272,23 +322,32 @@ def _change_finding(
     )
 
 
-def _change_summary(base_text: str | None, head_text: str | None) -> str | None:
+def _change_summary(base: _BaseBlob, head: _BaseBlob) -> str | None:
     """How the head copy differs, as line counts. None when it does not.
 
     Content stays out of the summary: it is a message, and the diff of a policy edit is the
     attacker's own text. The two copies are already read from git, so no `git diff` run is
-    needed to count them.
+    needed to count them. A head copy over `MAX_CONFIG_BYTES` was not read, so the summary says
+    that rather than counting lines that were never seen.
     """
-    if base_text is None and head_text is None:
+    if base.absent and head.absent:
         return None
-    if base_text is None:
+    if base.absent:
         return "added by this change"
-    if head_text is None:
+    if head.absent:
         return "deleted by this change"
-    if base_text == head_text:
+    if head.oversize is not None:
+        # The decisive phrase comes first: a message is capped at 200 characters, and the policy
+        # prefix already spends about half of that before the summary starts.
+        return (
+            "no comparison was made: "
+            f"the copy in this change is {head.oversize} bytes, over the {MAX_CONFIG_BYTES} "
+            "byte limit"
+        )
+    if base.text == head.text:
         return None
-    before = Counter(base_text.splitlines())
-    after = Counter(head_text.splitlines())
+    before = Counter((base.text or "").splitlines())
+    after = Counter((head.text or "").splitlines())
     return (
         f"{sum((after - before).values())} line(s) added, {sum((before - after).values())} removed"
     )

@@ -168,6 +168,8 @@ mode full (local, manual, scheduled):
 
 for each policy file:
     use the version at base; if the head version differs, emit policy-changed (WARN) with a diff summary
+    a base blob over MAX_CONFIG_BYTES is never decoded: skipped-unreadable (HIGH), the shipped
+    defaults apply, and the change's copy is not read or compared
 ```
 
 This closes B1: a credentialed push that edits the policy and adds a payload in one commit is judged by the old policy. It does not stop an attacker who also removes the workflow (B2).
@@ -347,6 +349,7 @@ Rules for suppressions:
 - Entries for `suppressible = false` rules never apply and emit `suppression-invalid` (HIGH). The same holds for an entry naming a rule that is not loaded in this build, or a scanner-state rule id. State membership is checked before the rule lookup, including when a loaded rule disagrees. State findings always report `suppressible = false`; both the shipped `cfg-long-line` rule and its engine fallback agree. Validity is decided before matching, so a mistaken entry cannot hide a finding while the report complains about it.
 - An entry is checked against the rule data rather than against the scan's findings, so a rule that was renamed or made non-suppressible is reported even on a scan where the entry matched nothing.
 - Unknown top-level keys emit `policy-unknown-key` (WARN); a missing or unsupported `version` exits 2.
+- The base copy is held to the same ceiling as the working tree. A blob over `MAX_CONFIG_BYTES` is refused before it is decoded, comes back as `skipped-unreadable` (HIGH) with the shipped defaults in its place, and the change's copy is not read, so no `policy-changed` is claimed for a comparison that never happened.
 
 ### 7.7 Wasm manifest
 
@@ -426,6 +429,7 @@ The invariant this enforces is that detector code cannot see less than it needs 
 |---|---|
 | File over size limit | `skipped-oversize` (HIGH for sensitive roles, else WARN) |
 | File unreadable, or changed size while being read | `skipped-unreadable` (HIGH) |
+| Config file at the trusted base over `MAX_CONFIG_BYTES` | `skipped-unreadable` (HIGH); the shipped defaults apply and the change's copy is not compared |
 | NUL byte in text after BOM handling | `nul-in-text` (HIGH) |
 | Undecodable text | `non-utf8-text` (HIGH sensitive roles, else WARN) |
 | Line over `line_cap` | `cfg-long-line` (HIGH in a `SENSITIVE_ROLES` file, else WARN); regex skipped for that line |
