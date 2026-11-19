@@ -94,12 +94,24 @@ def assemble(*fragments: str) -> str:
 
 def builders() -> Mapping[str, Builder]:
     """Every builder the suite knows, by the name a rule file uses."""
-    from . import builtin_patterns, ci_surface, config_role, stellar_seed, wasm_manifest
+    from . import (
+        builtin_patterns,
+        cargo_vectors_patch,
+        ci_surface,
+        ci_surface_hook_window,
+        config_role,
+        npm_lockfile_registry,
+        stellar_seed,
+        wasm_manifest,
+    )
 
     return {
         **builtin_patterns.BUILDERS,
+        **cargo_vectors_patch.BUILDERS,
         **ci_surface.BUILDERS,
+        **ci_surface_hook_window.BUILDERS,
         **config_role.BUILDERS,
+        **npm_lockfile_registry.BUILDERS,
         **stellar_seed.BUILDERS,
         **wasm_manifest.BUILDERS,
     }

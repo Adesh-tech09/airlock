@@ -15,18 +15,20 @@ from collections.abc import Callable, Iterable
 
 from ..fingerprint import PendingFinding
 from ..model import ScanContext
-from . import ci_surface, config_role, stellar_seed, wasm_manifest
+from . import cargo_vectors, ci_surface, config_role, npm_registry, stellar_seed, wasm_manifest
 
 Detector = Callable[[ScanContext], Iterable[PendingFinding]]
 
 DETECTORS: tuple[Detector, ...] = (
+    cargo_vectors.run,
     ci_surface.run,
     config_role.run,
+    npm_registry.run,
     stellar_seed.run,
     wasm_manifest.run,
 )
 
 #: Bare names, as they appear after the `builtin:` prefix in a rule file.
 DETECTOR_NAMES: frozenset[str] = frozenset(
-    {"ci_surface", "config_role", "stellar_seed", "wasm_manifest"}
+    {"cargo_vectors", "ci_surface", "config_role", "npm_registry", "stellar_seed", "wasm_manifest"}
 )

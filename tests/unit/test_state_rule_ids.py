@@ -116,8 +116,7 @@ def _state_rule_literal_ids(tree: ast.Module) -> list[str]:
         else:
             continue
         named = any(
-            isinstance(target, ast.Name) and target.id == "STATE_RULE_IDS"
-            for target in targets
+            isinstance(target, ast.Name) and target.id == "STATE_RULE_IDS" for target in targets
         )
         if not named:
             continue
@@ -135,8 +134,9 @@ class TestStateRuleIds:
 
     def test_the_checker_names_a_missing_id_and_its_file(self) -> None:
         derived = derived_state_ids()
-        source = derived.pop("no-trusted-base")
-        problems = coverage_problems(derived, STATE_RULE_IDS)
+        source = derived["no-trusted-base"]
+        shrunk = frozenset(STATE_RULE_IDS - {"no-trusted-base"})
+        problems = coverage_problems(derived, shrunk)
         assert len(problems) == 1
         assert "no-trusted-base" in problems[0]
         assert source in problems[0]

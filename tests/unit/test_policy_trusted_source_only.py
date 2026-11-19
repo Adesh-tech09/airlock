@@ -120,5 +120,5 @@ class TestTrustedSourceOnly:
         # prove nothing about a trap that can never fire.
         base = seed(repo)
 
-        with pytest.raises(AssertionError, match="airlock.toml was read"):
+        with pytest.raises(AssertionError, match=r"airlock\.toml was read"):
             resolve_policy(repo, Mode.FULL, base)

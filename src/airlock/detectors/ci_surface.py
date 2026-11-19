@@ -26,8 +26,10 @@ from collections.abc import Iterable
 
 from ..fingerprint import PendingFinding
 from ..model import FileEntry, Rule, ScanContext
+from ..roles import INSTALL_HOOK_ROLE
 from ..rules import finding_for, line_matches
 
+LIFECYCLE_EXEC_WINDOW = 3
 PRIVILEGED_RULE_ID = "pat-privileged-trigger"
 FETCH_RULE_ID = "pat-lifecycle-fetch"
 EXEC_RULE_ID = "pat-lifecycle-exec"
@@ -64,7 +66,9 @@ _CHECKOUT_STEP = re.compile(r"""uses:\s*(?:[\w.\-]+/)?actions/checkout@""")
 #: same line also fetches, which is why the check that runs this is a two-condition one.
 _EXEC_TARGET = re.compile(
     r"""
-      (?:\||&&|;)\s*(?:sudo\s+)?(?:[\w.\-/]*/)?
+      ^\s*(?:sudo\s+)?(?:[\w.\-/]*/)?
+        (?:sh|bash|dash|zsh|pwsh|powershell|python[23]?|node|perl|ruby|cmd|iex)(?:\.exe)?\b
+    | (?:\||&&|;)\s*(?:sudo\s+)?(?:[\w.\-/]*/)?
         (?:sh|bash|dash|zsh|pwsh|powershell|python[23]?|node|perl|ruby|cmd|iex)(?:\.exe)?\b
     | \bInvoke-Expression\b
     | <\(\s*(?:curl|wget|Invoke-WebRequest)\b
@@ -180,10 +184,23 @@ def _lifecycle_execs(
     and the HIGH cannot drift apart on what counts as a client verb.
     """
     findings: list[PendingFinding] = []
-    for number, line in _searchable(lines, line_cap):
+    searchable = dict(_searchable(lines, line_cap))
+    for number, line in searchable.items():
         if not line_matches(fetch_rule, line):
             continue
-        if not _EXEC_TARGET.search(line):
+        exec_line = number
+        if INSTALL_HOOK_ROLE in entry.roles:
+            exec_line = next(
+                (
+                    candidate
+                    for candidate in range(number, number + LIFECYCLE_EXEC_WINDOW)
+                    if candidate in searchable and _EXEC_TARGET.search(searchable[candidate])
+                ),
+                0,
+            )
+        elif not _EXEC_TARGET.search(line):
+            continue
+        if not exec_line:
             continue
         findings.append(
             finding_for(
@@ -191,7 +208,7 @@ def _lifecycle_execs(
                 entry,
                 number,
                 evidence=line,
-                message=f"{rule.title}: the fetched result reaches a shell on line {number}",
+                message=(f"{rule.title}: the fetched result reaches a shell on line {exec_line}"),
             )
         )
     return findings

@@ -19,7 +19,7 @@ from airlock.strkey import crc16_xmodem, decode_seed
 RULE_ID = "stellar-seed"
 
 
-def findings_for(text: str, *, line_cap: int = 90) -> list:
+def findings_for(text: str, *, line_cap: int = 200) -> list:
     ctx = context(Case(files=(File(CASE_PATH, text=text),)))
     if line_cap != ctx.policy.line_cap:
         ctx = replace(ctx, policy=replace(ctx.policy, line_cap=line_cap))

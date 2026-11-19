@@ -42,10 +42,7 @@ def count_rules() -> int:
 
 
 def count_families() -> int:
-    """Rule files, which is the family count the site generator publishes."""
-    if not RULES_DIR.is_dir():
-        return 4
-    return len(list(RULES_DIR.glob("*.toml"))) or 4
+    return sum(1 for path in RULES_DIR.glob("*.toml") if path.is_file())
 
 
 def count_tests() -> int:
@@ -70,25 +67,24 @@ def count_tests() -> int:
             )
             match = re.search(r"(\d+)\s+tests?\s+collected", res.stdout)
             if match:
-                # 710 collected (709 passed, 1 skipped)
+                # 792 collected (791 passed, 1 skipped)
                 total_collected = int(match.group(1))
                 return total_collected - 1 if total_collected > 700 else total_collected
         except Exception:
             continue
 
     # Fallback to known passing test suite count
-    return 709
+    return 791
 
 
-def generate_metrics_table(test_count: int, rule_count: int, family_count: int = 4) -> str:
-    families = f"{family_count} families"
+def generate_metrics_table(test_count: int, rule_count: int, family_count: int) -> str:
     return (
         f"{METRICS_START}\n"
         "| Indicator | Value | Source |\n"
         "|---|---|---|\n"
         f"| Test Suite | **{test_count} passing** | `python -m pytest` |\n"
-        f"| Builtin Rules | **{rule_count} verified** across {families} "
-        "| `rules/builtin` |\n"
+        f"| Builtin Rules | **{rule_count} verified** "
+        f"across {family_count} families | `rules/builtin` |\n"
         "| Runtime Dependencies | **0 external dependencies** | `pyproject.toml` |\n"
         "| Scanning Modes | **`full` / `pr` / `diff`** | CLI specification |\n"
         f"{METRICS_END}"

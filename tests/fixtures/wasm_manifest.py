@@ -29,11 +29,6 @@ def wasm_bytes(seed: int) -> bytes:
     return section
 
 
-def lfs_pointer(seed: int) -> str:
-    """The git LFS pointer shape: a file named `*.wasm` that holds no Wasm header."""
-    return f"version https://git-lfs.github.com/spec/v1\noid sha256:{digest(wasm_bytes(seed))}\n"
-
-
 def listed(data: bytes, path: str) -> Case:
     """One artifact plus the manifest entry that vouches for it at that path."""
     entry = WasmEntry(
@@ -59,11 +54,16 @@ def entry_for(data: bytes, path: str, origin: str = "built") -> WasmEntry:
 
 
 def wasm_unlisted() -> Fixture:
+    from .wasm_lfs_pointer import ATTRIBUTES, pointer
+
+    pointer_bytes = wasm_bytes(8)
+    pointer_oid = digest(pointer_bytes)
     return Fixture(
         positive=Case(
             files=(
                 File(ARTIFACT, raw=wasm_bytes(7)),
-                File(MISSING, text=lfs_pointer(8)),
+                File(".gitattributes", text=ATTRIBUTES),
+                File(MISSING, text=pointer(pointer_oid, len(pointer_bytes))),
             )
         ),
         negative=listed(wasm_bytes(7), ARTIFACT),

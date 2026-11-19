@@ -13,10 +13,11 @@ cannot say what will land at release time.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import replace
 
 from ..fingerprint import PendingFinding
 from ..model import FileEntry, Rule, ScanContext, WasmEntry
-from ..roles import ARCHIVE_ROLE, WASM_ROLE
+from ..roles import ARCHIVE_ROLE, WASM_ROLE, match_glob
 from ..rules import finding_for
 
 UNLISTED_RULE_ID = "wasm-unlisted"
@@ -26,6 +27,7 @@ STALE_RULE_ID = "wasm-manifest-stale"
 ARCHIVE_RULE_ID = "wasm-archive-skipped"
 
 WASM_SUFFIX = ".wasm"
+LFS_VERSION = "version https://git-lfs.github.com/spec/v1"
 
 
 def _require_rule(rules: dict[str, Rule], rule_id: str) -> Rule:
@@ -113,6 +115,85 @@ def _compare(
     return None
 
 
+def _lfs_pointer_oid(text: str, line_cap: int) -> str | None:
+    lines = text.splitlines()
+    if len(lines) != 3 or any(len(line) > line_cap for line in lines):
+        return None
+    version, oid_line, size_line = lines
+    if version != LFS_VERSION or not oid_line.startswith("oid sha256:"):
+        return None
+    oid = oid_line.removeprefix("oid sha256:")
+    if len(oid) != 64 or any(char not in "0123456789abcdef" for char in oid):
+        return None
+    if not size_line.startswith("size "):
+        return None
+    size = size_line.removeprefix("size ")
+    if not size.isascii() or not size.isdecimal() or not any(char != "0" for char in size):
+        return None
+    return oid
+
+
+def _attribute_matches(pattern: str, path: str) -> bool:
+    if not pattern or any(char in pattern for char in "\\[]"):
+        return False
+    normalized = pattern.removeprefix("/")
+    if "/" not in normalized:
+        return match_glob(normalized, path.rsplit("/", 1)[-1])
+    return match_glob(normalized, path)
+
+
+def _is_lfs_path(entries: tuple[FileEntry, ...], path: str, line_cap: int) -> bool:
+    attributes = sorted(
+        (
+            (entry.path.rpartition("/")[0], entry.text)
+            for entry in entries
+            if entry.path.rsplit("/", 1)[-1] == ".gitattributes" and entry.text is not None
+        ),
+        key=lambda item: item[0].count("/"),
+    )
+    tracked = False
+    for base, text in attributes:
+        if base:
+            prefix = f"{base}/"
+            if not path.startswith(prefix):
+                continue
+            relative_path = path.removeprefix(prefix)
+        else:
+            relative_path = path
+        for line in text.splitlines():
+            if len(line) > line_cap:
+                continue
+            fields = line.split()
+            if not fields or fields[0].startswith("#"):
+                continue
+            if not _attribute_matches(fields[0], relative_path):
+                continue
+            for attribute in fields[1:]:
+                if attribute == "filter=lfs":
+                    tracked = True
+                elif attribute in {"filter", "-filter", "!filter"}:
+                    tracked = False
+    return tracked
+
+
+def _compare_lfs_pointer(
+    entry: FileEntry,
+    oid: str,
+    rules: dict[str, Rule],
+    by_hash: dict[str, WasmEntry],
+    by_path: dict[str, WasmEntry],
+) -> PendingFinding | None:
+    if oid not in by_hash:
+        return finding_for(
+            _require_rule(rules, UNLISTED_RULE_ID),
+            entry,
+            0,
+            evidence=oid,
+            message=f"{entry.path} has LFS pointer oid {oid}, which is not in the manifest",
+        )
+    return _compare(replace(entry, sha256=oid), rules, by_hash, by_path)
+
+
 def run(ctx: ScanContext) -> Iterable[PendingFinding]:
     """Compare tracked Wasm against the trusted manifest and report every gap."""
     rules = {rule.id: rule for rule in ctx.rules}
@@ -134,9 +215,19 @@ def run(ctx: ScanContext) -> Iterable[PendingFinding]:
             )
         if not _is_wasm(entry):
             continue
-        if entry.sha256 is not None:
-            seen_hashes.add(entry.sha256)
-        finding = _compare(entry, rules, by_hash, by_path)
+        oid = (
+            _lfs_pointer_oid(entry.text, ctx.policy.line_cap)
+            if entry.text is not None and _is_lfs_path(ctx.entries, entry.path, ctx.policy.line_cap)
+            else None
+        )
+        effective_hash = oid or entry.sha256
+        if effective_hash is not None:
+            seen_hashes.add(effective_hash)
+        finding = (
+            _compare_lfs_pointer(entry, oid, rules, by_hash, by_path)
+            if oid is not None
+            else _compare(entry, rules, by_hash, by_path)
+        )
         if finding is not None:
             yield finding
 
