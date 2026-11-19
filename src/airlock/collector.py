@@ -313,27 +313,30 @@ def _collect_one(
     if size_bytes > len(head):
         with target.open("rb") as handle:
             data = handle.read(size_bytes + 1)
-        if len(data) > size_bytes:
-            # The file grew while it was being read. The bytes on disk are untrusted either
-            # way, so keep what was read and record the mismatch as an unreadable skip.
-            findings.append(
-                _state(
-                    "skipped-unreadable",
-                    Severity.HIGH,
-                    entry.path,
-                    roles,
-                    "file changed size while being read",
-                )
+    if len(data) != size_bytes:
+        # The file changed size while it was being read, in either direction. A shorter read
+        # is the worse one: it is a clean prefix of the file, so hashing it would certify
+        # bytes no revision contains while the report calls the file scanned. The bytes on
+        # disk are untrusted either way, so keep what was read and record the mismatch as an
+        # unreadable skip.
+        findings.append(
+            _state(
+                "skipped-unreadable",
+                Severity.HIGH,
+                entry.path,
+                roles,
+                "file changed size while being read",
             )
-            return (
-                FileEntry(
-                    path=entry.path,
-                    sha256=None,
-                    roles=roles,
-                    skip_reason=SKIP_UNREADABLE,
-                ),
-                tuple(findings),
-            )
+        )
+        return (
+            FileEntry(
+                path=entry.path,
+                sha256=None,
+                roles=roles,
+                skip_reason=SKIP_UNREADABLE,
+            ),
+            tuple(findings),
+        )
 
     sha256 = hashlib.sha256(data).hexdigest()
 
