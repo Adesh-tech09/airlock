@@ -1,10 +1,10 @@
 {
   "source": "rules/builtin",
   "counts": {
-    "high": 12,
+    "high": 16,
     "warn": 10,
     "info": 0,
-    "total": 22
+    "total": 26
   },
   "rules": [
     {
@@ -228,6 +228,54 @@
       ],
       "suppressible": true,
       "rationale": "`.vscode/settings.json` is the second half of the editor auto-run surface: `tasks.json` says what can run, and these keys say what the editor runs by itself when a folder opens. A path to an interpreter or a compiler directory is loaded by the extension host, so a planted one needs no user action. Preferences with nothing executable behind them are not reported, which is what keeps this a WARN about a handful of key names rather than about the file."
+    },
+    {
+      "id": "cargo-patch-override",
+      "title": "Cargo patch overrides a registry dependency",
+      "severity": "high",
+      "family": "cargo_vectors",
+      "detector": "builtin:cargo_vectors",
+      "roles": [
+        "source"
+      ],
+      "suppressible": true,
+      "rationale": "A [patch.*] entry overrides the registry package selected by the lockfile. The replacement is reviewable but must be made explicit; a maintainer can accept a reviewed patch with a reasoned suppression."
+    },
+    {
+      "id": "cargo-git-dependency",
+      "title": "Cargo dependency uses a Git source",
+      "severity": "high",
+      "family": "cargo_vectors",
+      "detector": "builtin:cargo_vectors",
+      "roles": [
+        "source"
+      ],
+      "suppressible": true,
+      "rationale": "A Git dependency supplies code outside the registry release path, even when it is pinned. The finding names the manifest table, dependency key and source so a reviewer can verify the replacement."
+    },
+    {
+      "id": "cargo-path-escape",
+      "title": "Cargo dependency path escapes the repository",
+      "severity": "high",
+      "family": "cargo_vectors",
+      "detector": "builtin:cargo_vectors",
+      "roles": [
+        "source"
+      ],
+      "suppressible": true,
+      "rationale": "A path dependency resolving outside the repository is not covered by the tracked source tree and can vary with the build environment. In-repository path dependencies remain clean."
+    },
+    {
+      "id": "npm-registry-bypass",
+      "title": "npm package resolves outside the public registry",
+      "severity": "high",
+      "family": "npm_registry",
+      "detector": "builtin:npm_registry",
+      "roles": [
+        "source"
+      ],
+      "suppressible": true,
+      "rationale": "A resolved HTTP(S) tarball host other than registry.npmjs.org supplies package bytes outside the standard registry. Private registries may be legitimate; until registry hosts are policy-configurable, accept one only with a fingerprint-keyed suppression and a reason. The detector parses the URL and never fetches it."
     },
     {
       "id": "wasm-unlisted",

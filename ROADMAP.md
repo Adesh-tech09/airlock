@@ -1,6 +1,6 @@
 # ROADMAP: Airlock
 
-Last updated: 2026-11-09 14:36 UTC
+Last updated: 2026-11-19 11:21 UTC
 
 Roadmap version: 1
 
@@ -43,7 +43,7 @@ The repository is 100% ready when every task in Phases 0 to 8 is done and every 
 | 6 | Stellar detectors | 0 | 5 | 0% |
 | 7 | Hardening and edge cases | 4 | 13 | 31% |
 | 8 | Release v0.2.0 and community | 2 | 6 | 33% |
-| 9 (backlog) | Backlog | 0 | 10 | 0% |
+| 9 (backlog) | Backlog | 0 | 14 | 0% |
 | **Phases 0 to 8** | **Readiness total** | **46** | **95** | **48%** |
 | Gates | G1 to G10 | 0 | 10 | 0% |
 <!-- PROGRESS:END -->
@@ -54,12 +54,14 @@ without a roadmap update, which the roadmap rule does not allow, so they are rec
 2026-10-28 audit and closed the same day.
 
 What runs: `airlock scan` executes the whole pipeline (2.10) over the shipped rule data in four
-report formats, all three code detectors are covered by fixtures the suite proves fire (3.1, 3.4,
-#32), and a Wasm artifact enters the trusted base with one command (`manifest add`, 3.5). What a
-user still cannot do is install it as an Action (4.1), and the rules ported from `malware_scan.py`
-(3.6, 3.7) are what the six reported campaigns actually need: until `cargo_vectors` lands (6.4),
-the bypass suite (3.9) cannot show all seven Appendix B cases failing closed, because one of them
-is still invisible. Measured on 2026-10-28 against a scratch repository per case: cases 1 to 5 exit
+report formats, all five code detectors have positive and negative fixture coverage (3.1, 3.4,
+#32, 9.11 to 9.14), and a Wasm artifact enters the trusted base with one command (`manifest add`,
+3.5). What a user still cannot do is install it as an Action (4.1), and the rules ported from
+`malware_scan.py` (3.6, 3.7) are what the six reported campaigns actually need. Task 9.14 adds
+Cargo manifest dependency-source checks, but the remaining Cargo vectors in 6.4, including
+`.cargo/config.toml` runner checks, are still open, so the bypass suite (3.9) cannot show all seven
+Appendix B cases failing closed. Measured on 2026-10-28 against a scratch repository per case:
+cases 1 to 5 exit
 1 (`wasm-unlisted`, `nul-in-text` plus `cfg-dynamic-code`, the inline marker inert, the allowlist
 inert, `cfg-dynamic-code`), and cases 6 and 7 exited 0, because `.cargo/config.toml` has no role
 and a payload under `vendor/` resolves to `source`, which no `cfg-*` rule read. Case 7 closed on
@@ -283,6 +285,10 @@ families.
 - [ ] **9.8** Workflow-combination rule: write token plus unpinned third-party action (motivated by `soroban-cost-linter`).
 - [ ] **9.9** PyPI distribution with trusted publishing. Check first that the PyPI name `airlock` is free; it may be taken [Guessing].
 - [ ] **9.10** Optional advisory-triage integration (consume cargo-audit or cargo-deny output).
+- [ ] **9.11** Bounded split-line lifecycle pairing for install hooks. Reuse the fetch rule, inspect at most three physical lines including the fetch line, honor `line_cap` on both halves, report on the fetch line and emit at most one HIGH per fetch. Keep package-manifest pairing same-line. Add positive and negative fixture coverage. Implemented for issue #42; awaiting CI verification.
+- [ ] **9.12** Parse tracked npm `package-lock.json` versions 1 to 3 and report each HTTP(S) `resolved` host other than `registry.npmjs.org`, including package path and host. Skip non-HTTP(S) sources and fail closed on malformed JSON. Private registry hosts remain suppression-only. Implemented for issue #46; awaiting CI verification.
+- [ ] **9.13** Resolve a valid Wasm LFS pointer oid only when `.gitattributes` marks the path `filter=lfs`; compare against the trusted manifest without fetching, account for matching oids as seen, and preserve HIGH for unknown or malformed pointers. Implemented for issue #44; awaiting CI verification.
+- [ ] **9.14** Parse tracked Cargo manifests and report `[patch.*]`, Git dependencies across standard/workspace dependency tables, and paths escaping the repository. Keep registry versions and in-repository paths clean; malformed TOML becomes a detector error. This is the dependency-source slice, not completion of 6.4's runner/build checks. Implemented for issue #45; awaiting CI verification.
 
 ## 6. Dependency map (critical path)
 
@@ -303,6 +309,8 @@ Parallelizable early: 0.6 to 0.14, 1.2, 1.6, 1.8, 1.10. The roadmap gate (1.9) s
 | D-07 | Roadmap gate has no exemptions, including dependency bumps | Decided 2026-10-27 | Matches the owner's instruction; Dependabot is grouped weekly to limit noise |
 | D-08 | Cut jsmask, SARIF-in-v0.1, `init`, `rules test` CLI, `deploy_gate`, SEP-58 parser from v0.1 | Decided 2026-10-27 | `ARCHITECTURE.md` 16.4 |
 | D-09 | SARIF fingerprint key | Decided 2026-10-28 | `partialFingerprints["airlock/v1"]`, matching D-01; ADR-019. Replaces the draft `repoGuard/v1` before SARIF ships, so no consumer migration is needed. Algorithm unchanged; implementation remains 7.6. |
+| D-10 | npm lockfile registry host policy | Decided 2026-11-19 | Compare parsed HTTP(S) hosts exactly to `registry.npmjs.org`. Do not add a policy field in this slice; intentional private registries require a reasoned suppression. See ADR-020. |
+| D-11 | Scoped Wave backlog exception | Accepted 2026-11-19 | The user authorized implementing posture-sec/airlock issues #42, #44, #45 and #46 before v0.1.0 despite unfinished roadmap dependencies and the Phase 9 freeze. The exception is limited to tasks 9.11 to 9.14; it does not close task 6.4 or the remaining Cargo vectors. |
 
 ## 8. Risk register
 
@@ -311,7 +319,7 @@ Parallelizable early: 0.6 to 0.14, 1.2, 1.6, 1.8, 1.10. The roadmap gate (1.9) s
 | R-1 | Attacker with push access removes the scanner step (B2) | High | 0.13, 4.5, decision D-04 |
 | R-2 | Config-role false positives erode trust | High | 3.2, 3.3, 4.6 |
 | R-3 | Bootstrap friction for new Wasm fixtures (B9) | Medium | Two-step flow documented in 4.2; revisit after dogfood |
-| R-4 | Solo-maintainer burnout and scope growth | Medium | Phase 9 is closed to work until v0.1.0 ships |
+| R-4 | Solo-maintainer burnout and scope growth | Medium | Phase 9 stays closed except scoped owner-authorized tasks; 9.11 to 9.14 were authorized for the four linked Wave issues, with no broader backlog work |
 | R-5 | Unverified GitHub behaviors left after 0.9: required-check semantics and `merge_group` base reachability | Medium | 0.13, 4.1, 7.9. Limits and `github.event.before` were measured on 2026-10-30 and are recorded in `ARCHITECTURE.md` 6.6 |
 | R-6 | Existing script's bypasses not actually real, wasting design effort | Low | 0.4 settles it early |
 | R-7 | Market too narrow | Medium | Track adoption; D-05 |
@@ -325,6 +333,7 @@ Newest first. One row per merged change.
 
 | Date (UTC) | Change | Tasks |
 |---|---|---|
+| 2026-11-19 11:11 | Implement the four scoped Wave issues: bounded install-hook pairing, npm lockfile host checks, manifest matching for LFS oids, and Cargo dependency-source findings. Add focused fixture/tests and update PRD, architecture, essentials, project map, README and generated site data. Tests were not executed as requested; CI verification is pending on branch `feat/wave-42-46-detectors`. | 9.11, 9.12, 9.13, 9.14, FR-18, FR-20, FR-30, FR-31, ADR-020, ADR-021, D-10, D-11 |
 | 2026-11-09 14:36 | Finalize Wave 11 readiness packet: decide D-05 (Accepted), update application packet in docs/wave/application.md with Wave 11 window (Nov 18–25), 709 passed tests, and live docs site link. Verified 15 scoped issues staged in docs/wave/issues/ and 23 labels on GitHub. | 8.4, D-05 |
 | 2026-11-09 14:06 | Implemented dynamic README metrics synchronization (`scripts/sync_readme.py`) generating live Shields.io endpoint JSON files under `site/data/` for tests (709 passing) and rules (22 verified), and enforced with `--check` in the `roadmap-check` workflow. | none ticked |
 | 2026-11-09 13:29 | Install OpenSSF Scorecard workflow (.github/workflows/scorecard.yml), add OpenSSF Scorecard badge, Roadmap check badge, and Live Docs badge to README. | 1.7 |

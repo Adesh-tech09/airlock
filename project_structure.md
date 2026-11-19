@@ -51,7 +51,8 @@ airlock/
       ci_surface.py                # workflow, manifest and hook pairings that need two conditions              (3.6)
       soroban_profile.py           # P1                                                                      (6.1)
       stellar_seed.py              # planned offline plaintext tracked-file seeds, D-06 KEEP (P1)            (6.3)
-      cargo_vectors.py             # P1                                                                      (6.4)
+      cargo_vectors.py             # Cargo patch, Git and escaped path dependency checks (P1)                 (9.14)
+      npm_registry.py              # package-lock resolved-host check (P1)                                   (9.12)
     report/
       console.py                   # (2.9)
       github.py                    # annotations with escaping, HIGH first, caps                             (2.9)
@@ -89,7 +90,7 @@ airlock/
     sitemap.xml                    # the four pages, absolute URLs
 
   tests/
-    unit/                          # one test module per source module
+    unit/                          # focused tests for detector modules and reported edge cases
     fixtures/                      # fixture BUILDERS (python), never live payload files
     bypass/                        # the seven regression tests from PRD Appendix B
     corpus/                        # clean-state snapshot of the six repos (no secrets)                      (0.10)

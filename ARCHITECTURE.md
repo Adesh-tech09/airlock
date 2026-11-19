@@ -95,8 +95,8 @@ airlock/
   src/airlock/
     cli.py  model.py  collector.py  roles.py  rules.py  policy.py  fingerprint.py  runner.py
     strkey.py                     # P1
-    detectors/{config_role,wasm_manifest,builtin_patterns}.py     # P0
-    detectors/{soroban_profile,stellar_seed,cargo_vectors}.py     # P1
+    detectors/{config_role,wasm_manifest,builtin_patterns,ci_surface}.py  # P0
+    detectors/{soroban_profile,stellar_seed,cargo_vectors,npm_registry}.py # P1
     report/{console,github,jsonout,summary}.py                    # sarif.py in P1
   rules/{roles.toml,builtin/*.toml}
   scripts/{check_roadmap_touched.sh,roadmap_progress.py}
@@ -463,7 +463,7 @@ Capability rules were chosen because obfuscator fingerprints rotate while the me
 2. Build `path -> expected hash` and `hash -> entry` maps from the trusted manifest.
 3. Emit `wasm-unlisted` (hash unknown), `wasm-hash-mismatch` (listed path, different hash) or `wasm-path-moved` (known hash, unlisted path).
 4. Emit `wasm-manifest-stale` for entries with no matching file. An entry whose declared path still holds a Wasm file is not called stale as well as mismatched or moved: one changed artifact, one finding.
-5. Detect archives and report `wasm-archive-skipped`. Git LFS pointer files are handled in P1 (FR-20): a file named `*.wasm` that carries no Wasm header is reported as `wasm-unlisted` with that reason.
+5. Detect archives and report `wasm-archive-skipped`. A `*.wasm` Git LFS pointer is resolved from its `oid sha256` only when `.gitattributes` marks the path with `filter=lfs`. The oid is compared to the trusted manifest without fetching the object, and a matching oid counts as seen for stale-entry accounting. An unknown oid is `wasm-unlisted` HIGH and names the full oid. A malformed pointer, invalid oid or size field, or pointer not marked LFS keeps the existing unlisted result. The size field is syntax-checked only: verifying the remote object's byte count would require fetching it, and the manifest stores no size.
 
 Wasm binary basics: magic `00 61 73 6D`, then version `01 00 00 00`. [Verified: Wasm binary format] No section parsing in v0.1; the SEP-58 metadata check is Later.
 
@@ -533,7 +533,7 @@ at scan time. No network access, balance lookup or live-key verification during 
 
 ### 9.5 `cargo_vectors` (P1)
 
-`.cargo/config.toml` `runner`, `linker`, `rustc-wrapper` and `rustc-workspace-wrapper` containing a shell; custom `build = "<path>"`; git dependencies without `rev`; `[patch]` and `[replace]` to git or path sources; `build.rs` network or shell capability.
+`cargo_vectors` reads every tracked `Cargo.toml` as TOML data. It reports every `[patch.*]` override, Git dependencies in `dependencies`, `dev-dependencies`, `build-dependencies` and `workspace.dependencies`, and path dependencies in those tables that resolve outside the repository. Findings name the manifest table, dependency key and replacement source. In-repository path dependencies and registry-version dependencies are clean. A malformed manifest becomes `detector-error`; the detector never invokes Cargo or accesses the network. Until registry policy exists, intentional Git and patch sources require a reasoned suppression. This slice does not implement `.cargo/config.toml` runner/linker/wrapper checks, custom `build` scripts, `[replace]`, or `build.rs` capability checks.
 
 ### 9.6 `builtin_patterns`
 
@@ -614,7 +614,11 @@ word on the line:
 3. `pat-lifecycle-exec` (HIGH): a line that both fetches and hands the result to a shell or
    interpreter, which covers `curl ... | bash`, `... && python`, `| Invoke-Expression`,
    `bash <(curl ...)` and an `eval` of a fetched string. The fetch half comes from
-   `pat-lifecycle-fetch`'s pattern for the same reason as above.
+   `pat-lifecycle-fetch`'s pattern for the same reason as above. Package-manifest pairing stays
+   on one line because each script is a separate value. On an `install-hook` entry only, the
+   detector also checks a forward window of three physical lines, including the fetch line. The
+   finding is on that fetch line and names the first matching execution line. Both lines must be
+   at or under `line_cap`; each fetch produces at most one finding.
 
 Each pairing is two linear searches rather than one regex, because the obvious single pattern for the
 dropper, a downloader then `.*` then a shell, restarts its `.*` at every column. That is quadratic in
@@ -654,7 +658,17 @@ for the detector's own matchers, which that harness now times next to the rule d
 rule's regex is the same ReDoS surface as a pattern rule's: `_DISPLAY_VERB` 4.8 ms, `_EXEC_TARGET`
 1.5 ms, `_HEAD_REF` 0.7 ms, `_CHECKOUT_STEP` 0.06 ms, `_SECRETS_INTERP` 0.05 ms.
 
-### 9.8 Deferred designs
+### 9.8 `npm_registry`
+
+The detector reads tracked `package-lock.json` files as JSON and inspects `resolved` values from
+lockfile versions 2 and 3 (`packages`) or version 1 (`dependencies`, recursively). Each HTTP(S)
+tarball URL whose parsed host is not exactly `registry.npmjs.org` produces one
+`npm-registry-bypass` HIGH with the package path and host. `git+`, `file:`, `link:`, `workspace:`
+and other non-HTTP(S) sources are outside this rule. A malformed JSON document becomes
+`detector-error`, not a clean result. The URL is parsed locally; nothing is fetched. Private
+registries are not configurable yet and need a fingerprint-keyed suppression with a reason.
+
+### 9.9 Deferred designs
 
 - `deploy_gate`: text heuristics over workflow files cannot see deploys hidden in scripts, reusable workflows or `make` targets, so it would give false assurance. Reconsider only if a real repo deploys to mainnet from CI.
 - SEP-58 metadata presence check and `wasmparse`: the SEP is not final and Colibri already verifies builds. [Verified: Colibri exists; Unverified: SEP final status]
@@ -791,6 +805,8 @@ exercised by these benign cases. Task 4.1 remains open, including the composite 
 | ADR-017 | Roadmap gate as a required CI check | The roadmap rots unless a machine enforces it | Friction on tiny PRs |
 | ADR-018 | Line cap instead of regex timeouts | Python `re` cannot be interrupted safely mid-match | Lines over the cap are inspected only by length and entropy |
 | ADR-019 | SARIF uses `partialFingerprints["airlock/v1"]` (D-09, 2026-10-28) | Match the Airlock name before output consumers can depend on a key; the fingerprint algorithm is unchanged | No migration needed because SARIF has not shipped; reporter implementation stays deferred to task 7.6 |
+| ADR-020 | npm lockfile findings trust only `registry.npmjs.org` by default | A fixed host check is auditable and avoids adding an unreviewed policy field | Private registry users need an exact, reasoned suppression until host policy is designed |
+| ADR-021 | Split-line fetch/exec pairing is limited to install hooks and three physical lines | Hook files are interpreted line-by-line by the detector, while package scripts are independent values; an unbounded window invents relationships | Hooks with a more distant handoff remain outside this rule and need separate evidence |
 
 ## 14. Roadmap
 

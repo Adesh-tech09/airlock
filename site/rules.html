@@ -324,8 +324,74 @@
     </article>
   </div>
 </section>
+<section class="family" id="family-cargo_vectors" data-family="cargo_vectors">
+  <h3 class="family-head"><span><b>[ 04 ] Cargo dependencies</b> / cargo_vectors</span><span>3 RULES / 3 HIGH</span></h3>
+  <div class="rule-list-inner">
+    <article class="rule" id="cargo-patch-override" data-severity="high"
+      data-family="cargo_vectors">
+      <div class="rule-top">
+        <h3 class="rule-id">cargo-patch-override</h3>
+        <span class="sev sev--high">HIGH</span>
+      </div>
+      <p class="rule-title">Cargo patch overrides a registry dependency</p>
+      <p class="rule-why">A [patch.*] entry overrides the registry package selected by the lockfile. The replacement is reviewable but must be made explicit; a maintainer can accept a reviewed patch with a reasoned suppression.</p>
+      <p class="rule-meta">
+        <span>Detector <b>cargo_vectors (code)</b></span>
+        <span>Roles <b>source</b></span>
+        <span>Suppressible <b>yes</b></span>
+      </p>
+    </article>
+    <article class="rule" id="cargo-git-dependency" data-severity="high"
+      data-family="cargo_vectors">
+      <div class="rule-top">
+        <h3 class="rule-id">cargo-git-dependency</h3>
+        <span class="sev sev--high">HIGH</span>
+      </div>
+      <p class="rule-title">Cargo dependency uses a Git source</p>
+      <p class="rule-why">A Git dependency supplies code outside the registry release path, even when it is pinned. The finding names the manifest table, dependency key and source so a reviewer can verify the replacement.</p>
+      <p class="rule-meta">
+        <span>Detector <b>cargo_vectors (code)</b></span>
+        <span>Roles <b>source</b></span>
+        <span>Suppressible <b>yes</b></span>
+      </p>
+    </article>
+    <article class="rule" id="cargo-path-escape" data-severity="high"
+      data-family="cargo_vectors">
+      <div class="rule-top">
+        <h3 class="rule-id">cargo-path-escape</h3>
+        <span class="sev sev--high">HIGH</span>
+      </div>
+      <p class="rule-title">Cargo dependency path escapes the repository</p>
+      <p class="rule-why">A path dependency resolving outside the repository is not covered by the tracked source tree and can vary with the build environment. In-repository path dependencies remain clean.</p>
+      <p class="rule-meta">
+        <span>Detector <b>cargo_vectors (code)</b></span>
+        <span>Roles <b>source</b></span>
+        <span>Suppressible <b>yes</b></span>
+      </p>
+    </article>
+  </div>
+</section>
+<section class="family" id="family-npm_registry" data-family="npm_registry">
+  <h3 class="family-head"><span><b>[ 05 ] npm registry</b> / npm_registry</span><span>1 RULES / 1 HIGH</span></h3>
+  <div class="rule-list-inner">
+    <article class="rule" id="npm-registry-bypass" data-severity="high"
+      data-family="npm_registry">
+      <div class="rule-top">
+        <h3 class="rule-id">npm-registry-bypass</h3>
+        <span class="sev sev--high">HIGH</span>
+      </div>
+      <p class="rule-title">npm package resolves outside the public registry</p>
+      <p class="rule-why">A resolved HTTP(S) tarball host other than registry.npmjs.org supplies package bytes outside the standard registry. Private registries may be legitimate; until registry hosts are policy-configurable, accept one only with a fingerprint-keyed suppression and a reason. The detector parses the URL and never fetches it.</p>
+      <p class="rule-meta">
+        <span>Detector <b>npm_registry (code)</b></span>
+        <span>Roles <b>source</b></span>
+        <span>Suppressible <b>yes</b></span>
+      </p>
+    </article>
+  </div>
+</section>
 <section class="family" id="family-wasm_manifest" data-family="wasm_manifest">
-  <h3 class="family-head"><span><b>[ 04 ] Artifact integrity</b> / wasm_manifest</span><span>5 RULES / 2 HIGH / 3 WARN</span></h3>
+  <h3 class="family-head"><span><b>[ 06 ] Artifact integrity</b> / wasm_manifest</span><span>5 RULES / 2 HIGH / 3 WARN</span></h3>
   <div class="rule-list-inner">
     <article class="rule" id="wasm-unlisted" data-severity="high"
       data-family="wasm_manifest">
