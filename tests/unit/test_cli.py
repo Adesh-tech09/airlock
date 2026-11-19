@@ -19,9 +19,10 @@ from pathlib import Path
 import pytest
 from tests.fixtures import assemble
 
-from airlock import detectors
+from airlock import detectors, runner
 from airlock.cli import DEFAULT_ROLES_FILE, DEFAULT_RULES_DIR, REPO_ROOT, main, rules_root
-from airlock.model import EXIT_CONFIG, EXIT_FINDINGS, EXIT_INTERNAL, EXIT_PASS, Mode
+from airlock.fingerprint import PendingFinding, fingerprint
+from airlock.model import EXIT_CONFIG, EXIT_FINDINGS, EXIT_INTERNAL, EXIT_PASS, Mode, Severity
 
 CLEAN_CONFIG = "export default { plugins: [] }\n"
 # Built from fragments at call time (`AGENTS.md` 4): the scanner reads every `.py` file in this
@@ -512,6 +513,64 @@ class TestFailClosed:
         monkeypatch.setattr("airlock.cli.collect", explode)
 
         assert main(["scan", str(repo), "--mode", "full"]) == EXIT_INTERNAL
+
+
+def blank_message_detector(ctx: object) -> tuple[PendingFinding, ...]:
+    """A detector bug in the shape issue #18 reported: a state finding with nothing to key on.
+
+    No matched line (the file was skipped), no file digest and an empty message, which is what a
+    detector that formats its message from a missing value produces.
+    """
+    return (
+        PendingFinding(
+            rule_id="skipped-oversize",
+            severity=Severity.HIGH,
+            path="large.bundle.js",
+            line=3,
+            roles=(),
+            message="",
+            evidence=None,
+            suppressible=False,
+            file_sha256=None,
+        ),
+    )
+
+
+class TestBlankMessageStateFinding:
+    """Issue #18 end to end: one unkeyable finding must not turn the scan into exit 2.
+
+    `evidence_key` used to raise `ValueError` here, and `main` maps that to `EXIT_CONFIG`, so the
+    whole report, including every other finding, was dropped. The scan has to number this finding
+    and carry it, with the rest of the report intact.
+    """
+
+    def test_a_blank_message_finding_is_numbered_and_reported_with_the_rest_of_the_scan(
+        self,
+        repo: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        seed(repo)
+        write(repo, "postcss.config.mjs", PAYLOAD)
+        commit(repo)
+        monkeypatch.setattr(runner, "DETECTORS", (blank_message_detector,))
+
+        code, out = scan(repo, "--mode", "full", "--format", "json", capsys=capsys)
+
+        assert code == EXIT_FINDINGS
+        report = json.loads(out)
+        reported = {item["rule_id"]: item for item in report["findings"]}
+        assert "cfg-dynamic-code" in reported
+        blank = reported["skipped-oversize"]
+        assert blank["message"] == ""
+        assert blank["occurrence"] == 0
+        assert blank["fingerprint"] == fingerprint(
+            "skipped-oversize",
+            "large.bundle.js",
+            "state:skipped-oversize:large.bundle.js:3",
+            0,
+        )
+        assert report["exit_code"] == EXIT_FINDINGS
 
 
 def artifact(root: Path, rel: str, word: str) -> Path:

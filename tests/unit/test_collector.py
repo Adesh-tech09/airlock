@@ -11,6 +11,7 @@ import hashlib
 import os
 import shutil
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,7 @@ from airlock.collector import (
     SKIP_SUBMODULE,
     SKIP_SYMLINK,
     SKIP_UNMERGED,
+    SKIP_UNREADABLE,
     check_runtime,
     collect,
     git_text,
@@ -135,6 +137,33 @@ def commit(root: Path) -> str:
 
 def scan(root: Path, policy: Policy | None = None):
     return collect(root, policy or Policy(), ROLE_GLOBS)
+
+
+def resize_at_open(
+    path: Path, call: int, *, truncate_to: int | None = None, append: int = 0
+) -> Callable[..., object]:
+    """Resize `path` just before its `call`-th `Path.open`, then open it normally.
+
+    The collector opens a path at most twice, so resizing inside one of those opens is the
+    only way to put a size change between the two reads without a race. `os.truncate` is used
+    instead of `Path.write_bytes`, which would re-enter the patched `open`.
+    """
+    real_open = Path.open
+    calls = 0
+
+    def patched(self: Path, *args: object, **kwargs: object) -> object:
+        nonlocal calls
+        if self == path:
+            calls += 1
+            if calls == call:
+                if truncate_to is not None:
+                    os.truncate(self, truncate_to)
+                elif append:
+                    with real_open(self, "ab") as handle:
+                        handle.write(b"x" * append)
+        return real_open(self, *args, **kwargs)
+
+    return patched
 
 
 def rule_ids(findings) -> list[str]:
@@ -336,6 +365,115 @@ class TestLimits:
             path.chmod(0o644)
         assert "skipped-unreadable" in rule_ids(result.pending)
         assert entry_of(result, "locked.py").skip_reason == "unreadable"
+
+
+class TestSizeChanges:
+    """A file whose size moves under the scanner is a skip, in either direction (9.12).
+
+    The change is injected at a counted `Path.open`, so the timing is exact rather than raced:
+    no sleep, no thread, no retry.
+    """
+
+    def test_a_file_that_shrinks_during_the_full_read_is_a_skip(
+        self, repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        path = write(repo, "long.py", b"x" * 5000)
+        commit(repo)
+        monkeypatch.setattr(Path, "open", resize_at_open(path, 2, truncate_to=100))
+
+        result = scan(repo)
+
+        entry = entry_of(result, "long.py")
+        assert entry.skip_reason == SKIP_UNREADABLE
+        assert entry.sha256 is None
+        assert entry.text is None
+        finding = next(f for f in result.pending if f.rule_id == "skipped-unreadable")
+        assert finding.severity is Severity.HIGH
+        assert finding.message == "file changed size while being read"
+        assert result.files_skipped == {SKIP_UNREADABLE: 1}
+
+    def test_a_file_that_shrinks_before_the_first_read_is_a_skip(
+        self, repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        path = write(repo, "small.py", b"y" * 100)
+        commit(repo)
+        # The recorded size is the file's real 100 bytes; the truncation lands after it.
+        monkeypatch.setattr(Path, "open", resize_at_open(path, 1, truncate_to=10))
+
+        result = scan(repo)
+
+        entry = entry_of(result, "small.py")
+        assert entry.skip_reason == SKIP_UNREADABLE
+        assert entry.sha256 is None
+        assert entry.text is None
+        assert "skipped-unreadable" in rule_ids(result.pending)
+        assert "skipped-oversize" not in rule_ids(result.pending)
+
+    def test_a_small_file_that_grows_before_the_first_read_is_a_skip(
+        self, repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        path = write(repo, "small.py", b"y" * 40)
+        commit(repo)
+        # The recorded size is the file's real 40 bytes. Growing it after `getsize` means the
+        # head read returns the whole file and `size_bytes > len(head)` is false, so this can
+        # only be caught by a counter check that sits outside the second-read branch.
+        monkeypatch.setattr(Path, "open", resize_at_open(path, 1, append=60))
+
+        result = scan(repo)
+
+        entry = entry_of(result, "small.py")
+        assert entry.skip_reason == SKIP_UNREADABLE
+        assert entry.sha256 is None
+        assert entry.text is None
+        assert "skipped-unreadable" in rule_ids(result.pending)
+        assert "skipped-oversize" not in rule_ids(result.pending)
+
+    def test_a_file_that_grows_during_the_full_read_is_still_a_skip(
+        self, repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        path = write(repo, "long.py", b"x" * 5000)
+        commit(repo)
+        monkeypatch.setattr(Path, "open", resize_at_open(path, 2, append=1000))
+
+        result = scan(repo)
+
+        entry = entry_of(result, "long.py")
+        assert entry.skip_reason == SKIP_UNREADABLE
+        assert entry.sha256 is None
+        assert entry.text is None
+        assert "skipped-unreadable" in rule_ids(result.pending)
+
+
+class TestUnchangedReads:
+    def test_a_file_under_the_head_size_is_hashed_whole(self, repo: Path) -> None:
+        data = b"z" * 40
+        write(repo, "small.py", data)
+        commit(repo)
+
+        result = scan(repo)
+
+        entry = entry_of(result, "small.py")
+        assert entry.sha256 == hashlib.sha256(data).hexdigest()
+        assert entry.text == "z" * 40
+        assert entry.skip_reason is None
+        assert result.pending == ()
+        assert result.files_skipped == {}
+
+    def test_an_inert_resize_hook_leaves_the_read_unchanged(
+        self, repo: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        data = b"x" * 5000
+        path = write(repo, "long.py", data)
+        commit(repo)
+        # Only two opens happen, so this call never fires: the hook must be invisible.
+        monkeypatch.setattr(Path, "open", resize_at_open(path, 3, truncate_to=1))
+
+        result = scan(repo)
+
+        entry = entry_of(result, "long.py")
+        assert entry.sha256 == hashlib.sha256(data).hexdigest()
+        assert entry.skip_reason is None
+        assert result.pending == ()
 
 
 class TestDecoding:

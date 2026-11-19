@@ -113,6 +113,7 @@ Removed since v0.1 of this document: `jsmask.py`, `wasmparse.py`, `detectors/dep
 - Lists tracked files with `git ls-files -z --stage`. Entries with mode 160000 are submodules and yield `submodule-present` (INFO, P1 hardening). Untracked files are out of scope. A path the index holds unmerged (stages 1 to 3, no stage 0) is kept as one entry and yields `skipped-unmerged`; it is never dropped for having no committed version.
 - **No default directory skips.** The first draft skipped `node_modules/`, `target/`, `dist/`, `.next/` and `vendor/` and reported them as INFO. That let an attacker hide a payload in a committed vendor directory (B6). If a repo tracks a very large vendored tree, policy may list `low_priority_dirs`, which only suppress WARN-level content rules there. HIGH rules, role magic and config-role globs still apply.
 - Reads each file once: size, first 4096 bytes and (lazily) the full bytes and SHA-256.
+- Checks that the bytes read match the file's recorded size on both the head-only read path and the full-read path. If the file shrinks or grows between the size check and the read, it yields `skipped-unreadable` (HIGH) without producing a hash or extracting text.
 - Decoding: honor a UTF-8 or UTF-16 BOM; otherwise decode UTF-8 strictly. Undecodable text yields `non-utf8-text` (HIGH in sensitive roles, WARN elsewhere). A NUL byte after BOM handling yields `nul-in-text`.
 - Never follows symlinks; a symlink is recorded as `skipped-symlink` (INFO) and its target path is not read.
 - Enforces `max_file_bytes` (default 5,000,000). Oversized files yield `skipped-oversize`: WARN generally, HIGH for the roles in `SENSITIVE_ROLES` (`tooling-config`, `editor-autorun`, `workflow`, `package-manifest`, `install-hook`).
@@ -263,7 +264,7 @@ Ordering: severity descending, then `(path, line, rule_id)`, so output is determ
 fingerprint = sha256(rule_id \0 normalized_path \0 normalized_evidence \0 occurrence)
 ```
 
-`normalized_evidence` is the matched line with outer whitespace stripped and internal whitespace runs collapsed. Line numbers are excluded so edits above a line do not invalidate a suppression. `occurrence` is the zero-based index of that identical evidence within the file, so a second copy of a suppressed line is a new, unsuppressed finding (B5). If an earlier duplicate is removed, indices shift and the suppression must be reissued; that fails closed. For file-level findings the file's SHA-256 replaces the evidence. A scanner-state finding (`skipped-oversize`, `history-rewritten`, `policy-unknown-key`) has neither a matched line nor file bytes, so it keys on its message: the message is written by the scanner, never by scanned content, and every state rule is non-suppressible, so rewording one cannot move an owner's suppression. [Unverified: churn on real edits]
+`normalized_evidence` is the matched line with outer whitespace stripped and internal whitespace runs collapsed. Line numbers are excluded so edits above a line do not invalidate a suppression. `occurrence` is the zero-based index of that identical evidence within the file, so a second copy of a suppressed line is a new, unsuppressed finding (B5). If an earlier duplicate is removed, indices shift and the suppression must be reissued; that fails closed. For file-level findings the file's SHA-256 replaces the evidence. A scanner-state finding (`skipped-oversize`, `history-rewritten`, `policy-unknown-key`) has neither a matched line nor file bytes, so it keys on its message: the message is written by the scanner, never by scanned content, and every state rule is non-suppressible, so rewording one cannot move an owner's suppression. A state finding whose message is blank, which a detector bug can produce, keys on `state:<rule_id>:<path>:<line>` instead of raising: one such finding must not turn the whole scan into a configuration error, and the same non-suppressibility means the line number in this one key cannot move a suppression. [Unverified: churn on real edits]
 
 ### 7.4 Rule file
 
@@ -427,7 +428,7 @@ The invariant this enforces is that detector code cannot see less than it needs 
 | Situation | Result |
 |---|---|
 | File over size limit | `skipped-oversize` (HIGH for sensitive roles, else WARN) |
-| File unreadable | `skipped-unreadable` (HIGH) |
+| File unreadable, or changed size while being read | `skipped-unreadable` (HIGH) |
 | Config file at the trusted base over `MAX_CONFIG_BYTES` | `skipped-unreadable` (HIGH); the shipped defaults apply and the change's copy is not compared |
 | NUL byte in text after BOM handling | `nul-in-text` (HIGH) |
 | Undecodable text | `non-utf8-text` (HIGH sensitive roles, else WARN) |

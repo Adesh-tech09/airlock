@@ -74,15 +74,21 @@ class PendingFinding:
         A state finding has neither: the file was skipped, is the repository itself, or is a
         policy file that was read from a ref rather than collected. It keys on its message,
         which is written by the scanner and never by scanned content, and every state rule is
-        non-suppressible, so a reworded message cannot move an owner's suppression.
+        non-suppressible, so a reworded message cannot move an owner's suppression. When even
+        the message is blank it keys on the rule, path and line rather than failing the scan.
         """
         if self.evidence is not None:
             return normalize_evidence(self.evidence)
         if self.file_sha256 is None:
             if not self.message.strip():
-                raise ValueError(
-                    f"{self.rule_id} at {self.path} has no evidence, no file sha256 and no message"
-                )
+                # A detector bug can produce a finding with nothing to key on. Raising here hides
+                # every other finding behind the CLI's exit 2, so key on what the scanner already
+                # knows. Rule, path and line are scanner-side data, and the rule is
+                # non-suppressible, so the line number in this one key cannot move a suppression.
+                # The prefix keeps this branch clear of the two above: a 64-hex file digest has no
+                # `state:` form, and a message could only collide by spelling this same key for the
+                # same rule and path, where both findings already share an occurrence counter.
+                return f"state:{self.rule_id}:{self.path}:{self.line}"
             return normalize_evidence(self.message)
         return self.file_sha256
 
