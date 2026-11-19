@@ -1,10 +1,10 @@
 {
   "source": "rules/builtin",
   "counts": {
-    "high": 12,
+    "high": 13,
     "warn": 10,
     "info": 0,
-    "total": 22
+    "total": 23
   },
   "rules": [
     {
@@ -89,7 +89,7 @@
         "tooling-config"
       ],
       "suppressible": true,
-      "rationale": "A build step that reaches the network can be handed its payload after install, which no lockfile review would have seen. Alone this is a WARN: some legitimate Next.js configs fetch at build time."
+      "rationale": "A build step that reaches the network can be handed its payload after install, which no lockfile review would have seen. A URL literal alone is not a capability: it has to be a call argument or the value of a key naming a URL, endpoint, host or request, so a documentation URL inside a comment stays quiet. Alone this is a WARN: some legitimate Next.js configs fetch at build time."
     },
     {
       "id": "cfg-chain-endpoint",
@@ -228,6 +228,25 @@
       ],
       "suppressible": true,
       "rationale": "`.vscode/settings.json` is the second half of the editor auto-run surface: `tasks.json` says what can run, and these keys say what the editor runs by itself when a folder opens. A path to an interpreter or a compiler directory is loaded by the extension host, so a planted one needs no user action. Preferences with nothing executable behind them are not reported, which is what keeps this a WARN about a handful of key names rather than about the file."
+    },
+    {
+      "id": "stellar-seed",
+      "title": "Plaintext Stellar secret seed",
+      "severity": "high",
+      "family": "stellar_seed",
+      "detector": "builtin:stellar_seed",
+      "roles": [
+        "source",
+        "doc",
+        "tooling-config",
+        "editor-autorun",
+        "workflow",
+        "package-manifest",
+        "install-hook",
+        "other"
+      ],
+      "suppressible": true,
+      "rationale": "A tracked Stellar secret seed hands whoever can read the repository the key. The finding is reported only when the StrKey checksum validates, so the encoding is intact; whether the seed is funded or live is not inferable offline and is not claimed."
     },
     {
       "id": "wasm-unlisted",

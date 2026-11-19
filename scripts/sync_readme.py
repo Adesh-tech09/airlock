@@ -41,6 +41,13 @@ def count_rules() -> int:
     return total if total > 0 else 22
 
 
+def count_families() -> int:
+    """Rule files, which is the family count the site generator publishes."""
+    if not RULES_DIR.is_dir():
+        return 4
+    return len(list(RULES_DIR.glob("*.toml"))) or 4
+
+
 def count_tests() -> int:
     # 1. Try local venv pytest
     venv_pytest = REPO_ROOT / ".venv" / "bin" / "pytest"
@@ -73,13 +80,15 @@ def count_tests() -> int:
     return 709
 
 
-def generate_metrics_table(test_count: int, rule_count: int) -> str:
+def generate_metrics_table(test_count: int, rule_count: int, family_count: int = 4) -> str:
+    families = f"{family_count} families"
     return (
         f"{METRICS_START}\n"
         "| Indicator | Value | Source |\n"
         "|---|---|---|\n"
         f"| Test Suite | **{test_count} passing** | `python -m pytest` |\n"
-        f"| Builtin Rules | **{rule_count} verified** across 4 families | `rules/builtin` |\n"
+        f"| Builtin Rules | **{rule_count} verified** across {families} "
+        "| `rules/builtin` |\n"
         "| Runtime Dependencies | **0 external dependencies** | `pyproject.toml` |\n"
         "| Scanning Modes | **`full` / `pr` / `diff`** | CLI specification |\n"
         f"{METRICS_END}"
@@ -98,6 +107,7 @@ def build_badge_json(label: str, message: str, color: str) -> dict[str, object]:
 def sync(*, check: bool = False) -> bool:
     test_count = count_tests()
     rule_count = count_rules()
+    family_count = count_families()
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     badges = {
@@ -130,7 +140,7 @@ def sync(*, check: bool = False) -> bool:
         if METRICS_START in content and METRICS_END in content:
             before, rest = content.split(METRICS_START, 1)
             _, after = rest.split(METRICS_END, 1)
-            new_table = generate_metrics_table(test_count, rule_count)
+            new_table = generate_metrics_table(test_count, rule_count, family_count)
             updated = f"{before}{new_table}{after}"
             if updated != content:
                 stale = True

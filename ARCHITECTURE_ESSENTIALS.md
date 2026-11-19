@@ -81,6 +81,7 @@ Status: v0.2 (red-team revision). Outline of decisions an agent must not violate
 | `wasm_manifest` | `wasm-unlisted`, `wasm-hash-mismatch`, `wasm-path-moved`, `wasm-manifest-stale`, `wasm-archive-skipped` | P0 |
 | `builtin_patterns` | rule data, not a code detector: `pat-decode-eval`, `pat-invisible-unicode` (HIGH), `pat-exfil-endpoint`, `pat-obfuscator-id` (WARN) | P0 |
 | `ci_surface` | `pat-secret-dump`, `pat-ptr-head-checkout`, `pat-lifecycle-exec` (HIGH, in code) and `pat-privileged-trigger`, `pat-lifecycle-fetch`, `pat-editor-command-path` (WARN, rule data) | P0 |
+| `stellar_seed` | `stellar-seed` (HIGH, checksum-valid plaintext seeds only) | P1 |
 | `soroban_profile` | release-profile keys, `testutils` placement (contract crates only) | P1 |
 | `stellar_seed` | strkey `S...` seed with valid checksum; suppressible | P1 |
 | `cargo_vectors` | `.cargo/config.toml` runner/linker/wrapper, custom `build`, git deps, `[patch]` | P1 |

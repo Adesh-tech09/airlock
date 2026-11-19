@@ -156,7 +156,7 @@
         <span class="sev sev--warn">WARN</span>
       </div>
       <p class="rule-title">Network access from a build config</p>
-      <p class="rule-why">A build step that reaches the network can be handed its payload after install, which no lockfile review would have seen. Alone this is a WARN: some legitimate Next.js configs fetch at build time.</p>
+      <p class="rule-why">A build step that reaches the network can be handed its payload after install, which no lockfile review would have seen. A URL literal alone is not a capability: it has to be a call argument or the value of a key naming a URL, endpoint, host or request, so a documentation URL inside a comment stays quiet. Alone this is a WARN: some legitimate Next.js configs fetch at build time.</p>
       <p class="rule-meta">
         <span>Detector <b>pattern engine</b></span>
         <span>Roles <b>tooling-config</b></span>
@@ -324,8 +324,27 @@
     </article>
   </div>
 </section>
+<section class="family" id="family-stellar_seed" data-family="stellar_seed">
+  <h3 class="family-head"><span><b>[ 04 ] Stellar keys</b> / stellar_seed</span><span>1 RULES / 1 HIGH</span></h3>
+  <div class="rule-list-inner">
+    <article class="rule" id="stellar-seed" data-severity="high"
+      data-family="stellar_seed">
+      <div class="rule-top">
+        <h3 class="rule-id">stellar-seed</h3>
+        <span class="sev sev--high">HIGH</span>
+      </div>
+      <p class="rule-title">Plaintext Stellar secret seed</p>
+      <p class="rule-why">A tracked Stellar secret seed hands whoever can read the repository the key. The finding is reported only when the StrKey checksum validates, so the encoding is intact; whether the seed is funded or live is not inferable offline and is not claimed.</p>
+      <p class="rule-meta">
+        <span>Detector <b>stellar_seed (code)</b></span>
+        <span>Roles <b>source, doc, tooling-config, editor-autorun, workflow, package-manifest, install-hook, other</b></span>
+        <span>Suppressible <b>yes</b></span>
+      </p>
+    </article>
+  </div>
+</section>
 <section class="family" id="family-wasm_manifest" data-family="wasm_manifest">
-  <h3 class="family-head"><span><b>[ 04 ] Artifact integrity</b> / wasm_manifest</span><span>5 RULES / 2 HIGH / 3 WARN</span></h3>
+  <h3 class="family-head"><span><b>[ 05 ] Artifact integrity</b> / wasm_manifest</span><span>5 RULES / 2 HIGH / 3 WARN</span></h3>
   <div class="rule-list-inner">
     <article class="rule" id="wasm-unlisted" data-severity="high"
       data-family="wasm_manifest">

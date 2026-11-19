@@ -48,6 +48,7 @@ FAMILIES: tuple[Family, ...] = (
     Family("builtin_patterns", "Pattern engine"),
     Family("config_role", "Build tooling"),
     Family("ci_surface", "CI surface"),
+    Family("stellar_seed", "Stellar keys"),
     Family("wasm_manifest", "Artifact integrity"),
 )
 
