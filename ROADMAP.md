@@ -1,6 +1,6 @@
 # ROADMAP: Airlock
 
-Last updated: 2026-11-21 09:10 UTC
+Last updated: 2026-11-21 09:20 UTC
 
 Roadmap version: 1
 
@@ -43,7 +43,7 @@ The repository is 100% ready when every task in Phases 0 to 8 is done and every 
 | 6 | Stellar detectors | 0 | 5 | 0% |
 | 7 | Hardening and edge cases | 4 | 13 | 31% |
 | 8 | Release v0.2.0 and community | 2 | 6 | 33% |
-| 9 (backlog) | Backlog | 40 | 53 | 75% |
+| 9 (backlog) | Backlog | 44 | 57 | 77% |
 | **Phases 0 to 8** | **Readiness total** | **46** | **95** | **48%** |
 | Gates | G1 to G10 | 0 | 10 | 0% |
 <!-- PROGRESS:END -->
@@ -328,6 +328,10 @@ families.
 - [x] **9.51** List suppressed fingerprints and reasons in the step summary after HIGH findings, escaping markup with `inline` (#66).
 - [x] **9.52** Version the JSON report (`SCHEMA_VERSION = 1`) and validate output and golden fixtures against a checked-in JSON schema with standard-library validator (#69).
 - [x] **9.53** Run the pr-mode trusted-base path against a two-commit fixture and add `.github/workflows/pr-mode.yml` (#77).
+- [x] **9.54** Make the fingerprint payload self-delimiting: a NUL-free quadruple keeps the published `\0` join, and a field containing a NUL switches all four to length-prefixed fields behind a leading NUL marker (#19).
+- [x] **9.55** In push mode, report `history-rewritten` only for a genuine non-ancestor verdict; any other `merge-base --is-ancestor` failure raises `ValueError` naming the command so the CLI exits 2 (#12).
+- [x] **9.56** Contain the engine pass per entry: an exception from `apply_patterns` or `cap_findings` keeps earlier findings and adds a HIGH `detector-error` naming the entry and stage, so the scan still writes a report (#14).
+- [x] **9.57** Give `_GLOB_CHARS` the matcher's grammar (`*` and `?` only), so a literal bracketed suppression path such as `app/[id].tsx` loads while wildcards stay refused (#22).
 
 ## 6. Dependency map (critical path)
 
@@ -372,6 +376,7 @@ Newest first. One row per merged change.
 
 | Date (UTC) | Change | Tasks |
 |---|---|---|
+| 2026-11-21 09:20 | Close #12, #14, #19 and #22 in one pull request. `fingerprint._payload` keeps the published `\0` join byte for byte when no field contains a NUL, and switches all four fields to 8-byte length prefixes behind a leading NUL marker when one does; the marker cannot begin a normal payload because `rule_id` starts with a letter, and the pinned NUL-free digest is unchanged so stored suppressions keep matching. Push mode reads `merge-base --is-ancestor` through the new `collector.git_status` and treats only exit 1 with no error output as `history-rewritten`; a missing object, shallow checkout or timeout raises `ValueError` naming the command and git's error, which the CLI maps to exit 2. The engine pass now contains each stage per entry: a raise becomes a HIGH `detector-error` naming the entry and stage and earlier findings stay in the report. `_GLOB_CHARS` drops `[` to match `roles._segment_pattern`, so a suppression for a literal `app/[id].tsx` loads while `*` and `?` are still refused. New modules: `test_fingerprint_field_join.py`, `test_policy_trusted_ref_errors.py`, `test_runner_engine_containment.py`, `test_model_glob_grammar.py`; `ARCHITECTURE.md` 7.3 states the payload rule. | 9.54, 9.55, 9.56, 9.57 |
 | 2026-11-20 19:15 | Close #64, #66, #69 and #77. Clean up suppression note wording; list suppressed items in step summary; version and validate JSON report schema; add PR mode fixture and workflow. | 9.50, 9.51, 9.52, 9.53 |
 | 2026-11-20 18:30 | Close #8, #9, #13 and #15. Interpolate HEAD_BYTES in skipped-oversize; report sensitive symlink at HIGH; report duplicate suppression as suppression-invalid; sanitize detector-error message and controls. | 9.46, 9.47, 9.48, 9.49 |
 | 2026-11-20 18:00 | Close #21, #25, #26 and #27. Enforce FileEntry mutual exclusivity; validate PE structure and emit content-magic-role; cover strkey vectors; hold engine boundary with AST test. | 9.42, 9.43, 9.44, 9.45 |
