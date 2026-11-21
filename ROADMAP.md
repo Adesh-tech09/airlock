@@ -1,6 +1,6 @@
 # ROADMAP: Airlock
 
-Last updated: 2026-11-21 08:05 UTC
+Last updated: 2026-11-21 08:16 UTC
 
 Roadmap version: 1
 
@@ -43,7 +43,7 @@ The repository is 100% ready when every task in Phases 0 to 8 is done and every 
 | 6 | Stellar detectors | 0 | 5 | 0% |
 | 7 | Hardening and edge cases | 4 | 13 | 31% |
 | 8 | Release v0.2.0 and community | 2 | 6 | 33% |
-| 9 (backlog) | Backlog | 20 | 33 | 61% |
+| 9 (backlog) | Backlog | 24 | 37 | 65% |
 | **Phases 0 to 8** | **Readiness total** | **46** | **95** | **48%** |
 | Gates | G1 to G10 | 0 | 10 | 0% |
 <!-- PROGRESS:END -->
@@ -308,6 +308,10 @@ families.
 - [x] **9.31** Add `tool.driver.rules` array in first-seen order over findings and wire every result to its `ruleIndex`. Each entry carries `id`, `name` and `shortDescription.text` set to the rule id. `tests/unit/test_sarif_rules_index.py` proves one entry per distinct id, correct index resolution and empty-report case (#59).
 - [x] **9.32** Emit `partialFingerprints["airlock/v1"]` on every SARIF result, read verbatim from `finding.fingerprint` (validated by `_require_fingerprint`, never recomputed). `tests/unit/test_sarif_fingerprints.py` proves the settled key spelling (ADR-019), line-move invariance and occurrence-change difference (#60).
 - [x] **9.33** Extend `flatten` in `src/airlock/report/console.py` to escape every C0 control character below 0x20 and DEL (0x7f) as `\xNN`, while CR, LF and CRLF still collapse to one space. `tests/unit/test_console_control_chars.py` proves ESC and BEL escape, no raw byte reaches output, and the existing newline/CR-LF contracts hold (#61).
+- [x] **9.34** Print mode, base and tool version in the console summary line while preserving counts, files scanned and skip accounting in the same order (#62).
+- [x] **9.35** Pin the per-level annotation budget including both notes across 0 to 12 findings and suppressions for HIGH, WARN, and INFO (#63).
+- [x] **9.36** Pin property and data escaping order across %, CR, LF, colon and comma, asserting distinct bytes for newlines and literal sequences (#65).
+- [x] **9.37** Count truncation ellipsis marker inside SUMMARY_EVIDENCE_CHARS budget so excerpts never exceed 200 characters (#68).
 
 ## 6. Dependency map (critical path)
 
@@ -353,6 +357,7 @@ Newest first. One row per merged change.
 | Date (UTC) | Change | Tasks |
 |---|---|---|
 | 2026-11-20 06:46 | Tick 9.29 done on observed CI rather than on local runs. Both required contexts are green at `280a766`: `checks` ran the suite on Ubuntu with `834 passed, 1 skipped`, and `roadmap` passed all three of its steps. The gate's third step had failed at `55fa80a` for a reason unrelated to the report change: `scripts/sync_readme.py --check` counts tests by collecting them, the `roadmap` job installed nothing, and `count_tests()` fell back to `FALLBACK_TEST_COUNT = 828`, which no longer matched the 834 now in `README.md` and `site/data/badge-tests.json`. The fix is the same install line `ci.yml` already uses, `python -m pip install --quiet . pytest`, added before the gate steps, so both jobs count the same suite the same way and the constant stays a last resort. No application code, test count or badge value changed for it, and `FALLBACK_TEST_COUNT` was not touched. Verified on GitHub: `checks` run 44689729849 and `roadmap` run 44689729859, both `success`, with the synchronization step completing after the install. Not re-verified locally: the Windows count is 793 because `tests/unit/test_collector.py` cannot be collected there, which is why the tick waits on the Linux job | 9.29 |
+| 2026-11-20 02:30 | Close #62, #63, #65 and #68. Console summary line carries mode, base and tool version; pin annotation budgets across severity levels; pin property escaping order; bound summary evidence with ellipsis inside 200 characters. | 9.34, 9.35, 9.36, 9.37 |
 | 2026-11-20 02:10 | Close #58, #59, #60 and #61. Implement the SARIF 2.1.0 renderer in src/airlock/report/sarif.py with driver, rules index and partialFingerprints; extend flatten in console.py to escape C0 control characters. | 9.30, 9.31, 9.32, 9.33 |
 | 2026-11-20 06:03 | The report could not account for every file it listed. `files_scanned` was `len(collection.entries)`, so every skipped entry was also counted as scanned, and an entry the collector hashes but never decodes (Wasm, ELF, Mach-O, archive) had neither a skip reason nor any counter that mentioned it: the two counters overlapped while also leaving a gap. `ScanReport` now carries `files_indexed`, `files_scanned` counts entries with a digest and no skip reason, and `files_skipped` counts entries with a reason, so the two partition the index. `run_scan` computes the three and raises `ValueError` naming all of them when scanned plus skipped misses the total, which the CLI maps to exit 2, so an entry no rule and no skip names fails the run rather than disappearing from a report that claims to be complete. A digest is not enough to be called scanned: an encoding skip is hashed before it is decoded, and counting digits alone would count that file twice, which is why `tests/unit/test_report_accounting.py` pins it. Six cases run over a real temporary repository with one text file, one Wasm artifact, one symlink and one 5,000,001-byte file, plus the JSON total, the summary line and the refusal. The symlink is a mode `120000` index entry written with `update-index --cacheinfo`, because `os.symlink` needs elevation on Windows and Git for Windows stores a link as a plain file by default; the collector never opens the target. `ARCHITECTURE.md` 7.8 and `ARCHITECTURE_ESSENTIALS.md` section 2 record the partition. 9.29 stays `[~]` until CI is green. | 9.29 |
 | 2026-11-19 20:05 | Close #28, #56 and #97. Document `cfg-long-line` dual severity in `README.md` (HIGH in build configs, WARN elsewhere) with `tests/unit/test_long_line_severity_docs.py`. Drop phantom rule id `cfg-nul` from `ARCHITECTURE_ESSENTIALS.md` and `PRD.md`, noting `nul-in-text` as the collector's state finding, with `tests/unit/test_rule_doc_ids.py` asserting table agreement with loaded `cfg-*` rule data. Update `scripts/sync_readme.py` to parse collected and skipped tests without magic thresholds, sync `README.md` prose test count with the metrics block, and verify three-way agreement in `tests/unit/test_readme_counts.py`. | 9.26, 9.27, 9.28 |
