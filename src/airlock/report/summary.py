@@ -21,6 +21,16 @@ from ..model import Finding, ScanReport, Severity
 
 #: The summary is size-limited by GitHub, so evidence is shorter here than in the JSON.
 SUMMARY_EVIDENCE_CHARS = 200
+
+#: The byte budget for one step summary. `ARCHITECTURE.md` 6.6 records that GitHub aborts an
+#: upload above 1 MiB without failing the step, which would delete the reviewer's copy of the
+#: findings while CI stayed green, so the renderer stops below that ceiling on purpose.
+SUMMARY_BUDGET_BYTES = 900_000
+WITHHELD_NOTICE = (
+    "_Withheld to stay under the step-summary limit: {rows} finding row(s) and "
+    "{evidence} evidence block(s). The counts above are complete and the JSON report is not "
+    "cut._"
+)
 SUMMARY_EVIDENCE_MARKER = " ..."
 TRUNCATION_MARKER = SUMMARY_EVIDENCE_MARKER
 
@@ -131,10 +141,15 @@ def suppressed_section(report: ScanReport) -> list[str]:
     ]
 
 
-def render(report: ScanReport) -> str:
-    """The whole summary as one Markdown document."""
-    highs = tuple(finding for finding in report.findings if finding.severity is Severity.HIGH)
-    lines: list[str] = [
+def _document(
+    report: ScanReport,
+    rows: list[str],
+    evidence_pairs: list[tuple[Finding, str]],
+    withheld_rows: int,
+    withheld_evidence: int,
+) -> str:
+    """Assemble the document from the parts a caller may have cut."""
+    lines = [
         "# Airlock",
         "",
         f"{count_phrase(report)} · {report.files_scanned} file(s) scanned",
@@ -147,12 +162,20 @@ def render(report: ScanReport) -> str:
         "",
         "| Severity | Rule | Location | Message |",
         "|---|---|---|---|",
-        *finding_rows(highs),
-        *evidence_blocks(highs),
+        *rows,
     ]
-    if lines[-1] != "":
-        lines.append("")
+    if evidence_pairs:
+        fence = fence_for([excerpt for _, excerpt in evidence_pairs])
+        lines += ["", "### Evidence", ""]
+        for finding, excerpt in evidence_pairs:
+            lines += [f"- {location(finding)}", fence, excerpt, fence, ""]
+    if withheld_rows or withheld_evidence:
+        lines += [
+            "",
+            WITHHELD_NOTICE.format(rows=withheld_rows, evidence=withheld_evidence),
+        ]
     lines += [
+        "",
         "## Suppressed findings",
         "",
         *suppressed_section(report),
@@ -164,3 +187,35 @@ def render(report: ScanReport) -> str:
         f" · airlock {inline(report.tool_version)}",
     ]
     return "\n".join(lines) + "\n"
+
+
+def render(report: ScanReport) -> str:
+    """The whole summary as one Markdown document, under `SUMMARY_BUDGET_BYTES`.
+
+    Evidence is cut before rows because a row still names the rule and the location, and the
+    counts line and the mode/exit line are never cut: they are the only truthful signal left
+    once rows are gone. A document under the budget renders byte-identically to before.
+    """
+    highs = tuple(finding for finding in report.findings if finding.severity is Severity.HIGH)
+    rows = list(finding_rows(highs))
+    trimmable_rows = bool(highs)
+    evidence_pairs = [
+        (finding, truncated(finding.evidence)) for finding in highs if finding.evidence
+    ]
+    withheld_rows = 0
+    withheld_evidence = 0
+    while True:
+        text = _document(report, rows, evidence_pairs, withheld_rows, withheld_evidence)
+        if len(text.encode("utf-8")) <= SUMMARY_BUDGET_BYTES:
+            return text
+        if evidence_pairs:
+            step = max(1, len(evidence_pairs) // 8)
+            evidence_pairs = evidence_pairs[:-step]
+            withheld_evidence += step
+        elif trimmable_rows and rows:
+            step = max(1, len(rows) // 8)
+            rows = rows[:-step]
+            withheld_rows += step
+        else:
+            # Nothing left that may be cut without dropping the counts or the mode line.
+            return text
