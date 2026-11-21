@@ -1,6 +1,6 @@
 # ROADMAP: Airlock
 
-Last updated: 2026-11-21 08:16 UTC
+Last updated: 2026-11-21 08:35 UTC
 
 Roadmap version: 1
 
@@ -43,7 +43,7 @@ The repository is 100% ready when every task in Phases 0 to 8 is done and every 
 | 6 | Stellar detectors | 0 | 5 | 0% |
 | 7 | Hardening and edge cases | 4 | 13 | 31% |
 | 8 | Release v0.2.0 and community | 2 | 6 | 33% |
-| 9 (backlog) | Backlog | 24 | 37 | 65% |
+| 9 (backlog) | Backlog | 28 | 41 | 68% |
 | **Phases 0 to 8** | **Readiness total** | **46** | **95** | **48%** |
 | Gates | G1 to G10 | 0 | 10 | 0% |
 <!-- PROGRESS:END -->
@@ -312,6 +312,10 @@ families.
 - [x] **9.35** Pin the per-level annotation budget including both notes across 0 to 12 findings and suppressions for HIGH, WARN, and INFO (#63).
 - [x] **9.36** Pin property and data escaping order across %, CR, LF, colon and comma, asserting distinct bytes for newlines and literal sequences (#65).
 - [x] **9.37** Count truncation ellipsis marker inside SUMMARY_EVIDENCE_CHARS budget so excerpts never exceed 200 characters (#68).
+- [x] **9.38** Treat `GITHUB_STEP_SUMMARY` write failures as warnings to stderr without changing the scan verdict; keep `--output` write failures fatal. S. Deps: 2.9. Done when: unreadable or missing-parent summary targets warn, stdout and exit code stay unchanged, writable targets still append, and `--output` failures remain fatal with no summary warning. (#73)
+- [x] **9.39** Prove `python -m airlock` and the console-script entry point agree on exit codes and stderr shape. S. Deps: 2.10. Done when: subprocess tests cover clean, high, usage and internal cases for both launch paths, assert no tracebacks, and assert one `airlock: internal error:` line containing the injected message. (#74)
+- [x] **9.40** Enforce corpus registry consistency. S. Deps: 2.12. Done when: `tests/corpus/registry.toml` defines the snapshot schema and `tests/unit/test_corpus_registry.py` fails on unlisted directories, entries without directories, malformed commits, empty licences and unknown rule ids, while passing on the current empty corpus. (#83)
+- [x] **9.41** Enforce fixture positive/negative distinctness. S. Deps: 2.12. Done when: `tests/unit/test_fixture_distinctness.py` token-normalizes shipped fixture pairs, enforces a reviewed floor from the closest legitimate pair, allows only builder-named exemptions with reasons, and `tests/fixtures/README.md` documents the convention. (#84)
 
 ## 6. Dependency map (critical path)
 
@@ -356,6 +360,7 @@ Newest first. One row per merged change.
 
 | Date (UTC) | Change | Tasks |
 |---|---|---|
+| 2026-11-20 16:28 | Close #73, #74, #83 and #84. Treat GITHUB_STEP_SUMMARY write failures as warnings; pin python -m and entry point behavior; enforce corpus registry consistency and fixture distinctness. | 9.38, 9.39, 9.40, 9.41 |
 | 2026-11-20 06:46 | Tick 9.29 done on observed CI rather than on local runs. Both required contexts are green at `280a766`: `checks` ran the suite on Ubuntu with `834 passed, 1 skipped`, and `roadmap` passed all three of its steps. The gate's third step had failed at `55fa80a` for a reason unrelated to the report change: `scripts/sync_readme.py --check` counts tests by collecting them, the `roadmap` job installed nothing, and `count_tests()` fell back to `FALLBACK_TEST_COUNT = 828`, which no longer matched the 834 now in `README.md` and `site/data/badge-tests.json`. The fix is the same install line `ci.yml` already uses, `python -m pip install --quiet . pytest`, added before the gate steps, so both jobs count the same suite the same way and the constant stays a last resort. No application code, test count or badge value changed for it, and `FALLBACK_TEST_COUNT` was not touched. Verified on GitHub: `checks` run 44689729849 and `roadmap` run 44689729859, both `success`, with the synchronization step completing after the install. Not re-verified locally: the Windows count is 793 because `tests/unit/test_collector.py` cannot be collected there, which is why the tick waits on the Linux job | 9.29 |
 | 2026-11-20 02:30 | Close #62, #63, #65 and #68. Console summary line carries mode, base and tool version; pin annotation budgets across severity levels; pin property escaping order; bound summary evidence with ellipsis inside 200 characters. | 9.34, 9.35, 9.36, 9.37 |
 | 2026-11-20 02:10 | Close #58, #59, #60 and #61. Implement the SARIF 2.1.0 renderer in src/airlock/report/sarif.py with driver, rules index and partialFingerprints; extend flatten in console.py to escape C0 control characters. | 9.30, 9.31, 9.32, 9.33 |
