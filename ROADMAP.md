@@ -1,6 +1,6 @@
 # ROADMAP: Airlock
 
-Last updated: 2026-11-21 08:55 UTC
+Last updated: 2026-11-21 09:10 UTC
 
 Roadmap version: 1
 
@@ -43,7 +43,7 @@ The repository is 100% ready when every task in Phases 0 to 8 is done and every 
 | 6 | Stellar detectors | 0 | 5 | 0% |
 | 7 | Hardening and edge cases | 4 | 13 | 31% |
 | 8 | Release v0.2.0 and community | 2 | 6 | 33% |
-| 9 (backlog) | Backlog | 36 | 49 | 73% |
+| 9 (backlog) | Backlog | 40 | 53 | 75% |
 | **Phases 0 to 8** | **Readiness total** | **46** | **95** | **48%** |
 | Gates | G1 to G10 | 0 | 10 | 0% |
 <!-- PROGRESS:END -->
@@ -324,6 +324,10 @@ families.
 - [x] **9.47** Report a symlink in a sensitive role as `skipped-symlink` HIGH instead of INFO, keeping INFO for ordinary paths; the target is never read (#9).
 - [x] **9.48** Report a second valid suppression entry with the same rule, path and fingerprint as `suppression-invalid`, naming both positions and which one is consulted first; the first entry still decides (#13).
 - [x] **9.49** Build the `detector-error` message from scanner text, the detector module and the exception type only, moving the exception text to evidence with C0 controls escaped and newlines flattened (#15).
+- [x] **9.50** Stop suppression note promising JSON output that was not written, naming `--format json` or reporting count alone (#64).
+- [x] **9.51** List suppressed fingerprints and reasons in the step summary after HIGH findings, escaping markup with `inline` (#66).
+- [x] **9.52** Version the JSON report (`SCHEMA_VERSION = 1`) and validate output and golden fixtures against a checked-in JSON schema with standard-library validator (#69).
+- [x] **9.53** Run the pr-mode trusted-base path against a two-commit fixture and add `.github/workflows/pr-mode.yml` (#77).
 
 ## 6. Dependency map (critical path)
 
@@ -368,6 +372,7 @@ Newest first. One row per merged change.
 
 | Date (UTC) | Change | Tasks |
 |---|---|---|
+| 2026-11-20 19:15 | Close #64, #66, #69 and #77. Clean up suppression note wording; list suppressed items in step summary; version and validate JSON report schema; add PR mode fixture and workflow. | 9.50, 9.51, 9.52, 9.53 |
 | 2026-11-20 18:30 | Close #8, #9, #13 and #15. Interpolate HEAD_BYTES in skipped-oversize; report sensitive symlink at HIGH; report duplicate suppression as suppression-invalid; sanitize detector-error message and controls. | 9.46, 9.47, 9.48, 9.49 |
 | 2026-11-20 18:00 | Close #21, #25, #26 and #27. Enforce FileEntry mutual exclusivity; validate PE structure and emit content-magic-role; cover strkey vectors; hold engine boundary with AST test. | 9.42, 9.43, 9.44, 9.45 |
 | 2026-11-20 16:28 | Close #73, #74, #83 and #84. Treat GITHUB_STEP_SUMMARY write failures as warnings; pin python -m and entry point behavior; enforce corpus registry consistency and fixture distinctness. | 9.38, 9.39, 9.40, 9.41 |
