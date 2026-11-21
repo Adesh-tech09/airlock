@@ -1,6 +1,6 @@
 # ROADMAP: Airlock
 
-Last updated: 2026-11-21 08:45 UTC
+Last updated: 2026-11-21 08:55 UTC
 
 Roadmap version: 1
 
@@ -43,7 +43,7 @@ The repository is 100% ready when every task in Phases 0 to 8 is done and every 
 | 6 | Stellar detectors | 0 | 5 | 0% |
 | 7 | Hardening and edge cases | 4 | 13 | 31% |
 | 8 | Release v0.2.0 and community | 2 | 6 | 33% |
-| 9 (backlog) | Backlog | 32 | 45 | 71% |
+| 9 (backlog) | Backlog | 36 | 49 | 73% |
 | **Phases 0 to 8** | **Readiness total** | **46** | **95** | **48%** |
 | Gates | G1 to G10 | 0 | 10 | 0% |
 <!-- PROGRESS:END -->
@@ -320,6 +320,10 @@ families.
 - [x] **9.43** Validate the PE structure before assigning `native-binary` to an `MZ` file, and emit a non-suppressible INFO `content-magic-role` naming the role and path when content magic applies (#25).
 - [x] **9.44** Cover the `strkey` seed decoder with vectors built at test time, including checksum, version, length and alphabet rejections (#26).
 - [x] **9.45** Hold the engine boundary with an AST test: `runner.py`, `model.py`, `fingerprint.py` and `roles.py` make no open, eval, exec, compile or subprocess call, and only `collector.py` imports `subprocess` (#27).
+- [x] **9.46** Interpolate `HEAD_BYTES` in the `skipped-oversize` message instead of the hardcoded 4096, with a test that monkeypatches the constant and one that pins the shipped value (#8).
+- [x] **9.47** Report a symlink in a sensitive role as `skipped-symlink` HIGH instead of INFO, keeping INFO for ordinary paths; the target is never read (#9).
+- [x] **9.48** Report a second valid suppression entry with the same rule, path and fingerprint as `suppression-invalid`, naming both positions and which one is consulted first; the first entry still decides (#13).
+- [x] **9.49** Build the `detector-error` message from scanner text, the detector module and the exception type only, moving the exception text to evidence with C0 controls escaped and newlines flattened (#15).
 
 ## 6. Dependency map (critical path)
 
@@ -364,6 +368,7 @@ Newest first. One row per merged change.
 
 | Date (UTC) | Change | Tasks |
 |---|---|---|
+| 2026-11-20 18:30 | Close #8, #9, #13 and #15. Interpolate HEAD_BYTES in skipped-oversize; report sensitive symlink at HIGH; report duplicate suppression as suppression-invalid; sanitize detector-error message and controls. | 9.46, 9.47, 9.48, 9.49 |
 | 2026-11-20 18:00 | Close #21, #25, #26 and #27. Enforce FileEntry mutual exclusivity; validate PE structure and emit content-magic-role; cover strkey vectors; hold engine boundary with AST test. | 9.42, 9.43, 9.44, 9.45 |
 | 2026-11-20 16:28 | Close #73, #74, #83 and #84. Treat GITHUB_STEP_SUMMARY write failures as warnings; pin python -m and entry point behavior; enforce corpus registry consistency and fixture distinctness. | 9.38, 9.39, 9.40, 9.41 |
 | 2026-11-20 06:46 | Tick 9.29 done on observed CI rather than on local runs. Both required contexts are green at `280a766`: `checks` ran the suite on Ubuntu with `834 passed, 1 skipped`, and `roadmap` passed all three of its steps. The gate's third step had failed at `55fa80a` for a reason unrelated to the report change: `scripts/sync_readme.py --check` counts tests by collecting them, the `roadmap` job installed nothing, and `count_tests()` fell back to `FALLBACK_TEST_COUNT = 828`, which no longer matched the 834 now in `README.md` and `site/data/badge-tests.json`. The fix is the same install line `ci.yml` already uses, `python -m pip install --quiet . pytest`, added before the gate steps, so both jobs count the same suite the same way and the constant stays a last resort. No application code, test count or badge value changed for it, and `FALLBACK_TEST_COUNT` was not touched. Verified on GitHub: `checks` run 44689729849 and `roadmap` run 44689729859, both `success`, with the synchronization step completing after the install. Not re-verified locally: the Windows count is 793 because `tests/unit/test_collector.py` cannot be collected there, which is why the tick waits on the Linux job | 9.29 |
